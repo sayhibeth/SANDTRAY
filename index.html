@@ -14,9 +14,7 @@
   --handleBorder:#bdbdbd;
   --handleText:#333;
 }
-
 *{box-sizing:border-box;}
-
 body{
   margin:0;
   font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -24,19 +22,10 @@ body{
   height:100vh;
   overflow:hidden;
 }
-
 .app{display:flex; height:100vh;}
 
-/* =========================
-   LEFT — TRAY
-========================= */
-
-.trayWrap{
-  flex:3;
-  position:relative;
-  height:100vh;
-}
-
+/* LEFT — TRAY */
+.trayWrap{ flex:3; position:relative; height:100vh; }
 .tray{
   width:100%;
   height:100vh;
@@ -48,40 +37,33 @@ body{
   background-size:contain;
 }
 
-/* =========================
-   MINIATURES (placed)
-========================= */
-
+/* MINIATURES (placed) */
 .placed{
   position:absolute;
-  left:0;
-  top:0;
+  left:0; top:0;
   width:140px;
 
-  /* transform built from vars */
   --rot: 0deg;
-  --sx: 1;   /* includes flip */
-  --sy: 1;   /* scale y */
+  --sx: 1;
+  --sy: 1;
 
   transform: translate(-50%,-50%) rotate(var(--rot)) scale(var(--sx), var(--sy));
   transform-origin: 50% 50%;
   user-select:none;
   touch-action:none;
 }
-
 .placed img{
   width:100%;
   pointer-events:none;
   filter:drop-shadow(0 6px 10px rgba(0,0,0,.18));
 }
-
 .placed.selected{
   outline:3px solid rgba(43,108,176,.6);
   outline-offset:4px;
   border-radius:8px;
 }
 
-/* Kid-obvious handles */
+/* Handles */
 .handle{
   display:none;
   position:absolute;
@@ -99,18 +81,8 @@ body{
   justify-content:center;
   z-index:3;
 }
-
 .placed.selected .handle{ display:flex; }
 
-/* Resize/flip handle bottom-right */
-.resizeHandle{
-  right:-14px;
-  bottom:-14px;
-  cursor:nwse-resize;
-}
-.resizeHandle span{ transform:translateY(-1px); }
-
-/* Rotate handle top-center */
 .rotateHandle{
   left:50%;
   top:-44px;
@@ -133,10 +105,11 @@ body{
 }
 .placed.selected .rotateLine{ display:block; }
 
-/* =========================
-   RIGHT — LIBRARY
-========================= */
+/* resize bottom-right, flip bottom-left (prevents “reverse” collisions) */
+.resizeHandle{ right:-14px; bottom:-14px; cursor:nwse-resize; border-radius:10px; }
+.flipHandle{ left:-14px; bottom:-14px; cursor:pointer; border-radius:10px; }
 
+/* RIGHT — LIBRARY */
 .library{
   flex:1;
   background:#fff;
@@ -145,19 +118,13 @@ body{
   flex-direction:column;
   min-width:260px;
 }
-
-.libHeader{
-  padding:12px;
-  border-bottom:1px solid var(--border);
-}
-
+.libHeader{ padding:12px; border-bottom:1px solid var(--border); }
 .tabs{
   display:flex;
   flex-wrap:wrap;
   gap:6px;
   margin-top:8px;
 }
-
 .tab{
   border:1px solid var(--border);
   padding:6px 10px;
@@ -166,21 +133,12 @@ body{
   cursor:pointer;
   background:#fff;
 }
-
 .tab.active{
   border-color:#2b6cb0;
   box-shadow:0 0 0 3px rgba(43,108,176,.15);
 }
 
-.searchRow input{
-  width:100%;
-  padding:8px;
-  border-radius:8px;
-  border:1px solid var(--border);
-  margin-top:8px;
-}
-
-/* smaller thumbs, denser grid */
+/* thumbs */
 .thumbGrid{
   padding:10px;
   overflow:auto;
@@ -188,7 +146,6 @@ body{
   grid-template-columns:repeat(3, 1fr);
   gap:8px;
 }
-
 .thumb{
   border:1px solid var(--border);
   border-radius:10px;
@@ -196,7 +153,6 @@ body{
   cursor:pointer;
   background:#fff;
 }
-
 .thumb img{
   width:100%;
   height:64px;
@@ -204,7 +160,6 @@ body{
   pointer-events:none;
   display:block;
 }
-
 .thumb .ph{
   width:100%;
   height:64px;
@@ -218,9 +173,7 @@ body{
   100%{ background-position: -200% 0; }
 }
 
-/* =========================
-   CONTROLS
-========================= */
+/* CONTROLS */
 .controls{
   position:absolute;
   bottom:20px;
@@ -232,7 +185,6 @@ body{
   box-shadow:var(--shadow);
   z-index:50;
 }
-
 .controls button{
   margin:4px;
   padding:8px 10px;
@@ -245,7 +197,6 @@ body{
 </head>
 
 <body>
-
 <div class="app">
 
   <div class="trayWrap">
@@ -256,7 +207,7 @@ body{
       <button id="backBtn" disabled>Send to Back</button>
       <button id="deleteBtn" disabled>Delete</button>
       <button id="clearBtn">Clear</button>
-      <button id="exportBtn">Save Tray Image</button>
+      <button id="exportBtn">SAVE TRAY IMAGE</button>
     </div>
   </div>
 
@@ -264,9 +215,6 @@ body{
     <div class="libHeader">
       <strong>Miniatures</strong>
       <div class="tabs" id="tabs"></div>
-      <div class="searchRow">
-        <input id="search" placeholder="Search..." />
-      </div>
     </div>
     <div id="thumbGrid" class="thumbGrid"></div>
   </aside>
@@ -275,20 +223,29 @@ body{
 
 <script>
 /* =========================
-   CATEGORIES (6)
+   11 EXACT CATEGORY NAMES
 ========================= */
-const CATEGORIES = ["All","People","Animals","Nature","Fantasy","Objects","Structures"];
+const CATEGORIES = [
+  "People",
+  "Medical/Emergency",
+  "Specialty People/Props",
+  "Nature/Elements",
+  "Transportation",
+  "Weapons/Death",
+  "Objects",
+  "Animals",
+  "Structures/Fences",
+  "Fantasy",
+  "Household/Food"
+];
 
 /* =========================
-   MINIATURES
-   - url = full image used on tray
-   - thumbUrl optional (if you later make small thumbs)
+   MINIATURES — EXACT LINKS
+   Note: Rose link had spacing in your paste; using the corrected URL you confirmed:
+   https://static.wixstatic.com/media/b668a8_a3df1a809086425faa2eb54e3dbe5304~mv2.png
 ========================= */
 const MINIATURES = [
-  /* ============ PEOPLE ============ */
-  { name:"Dr Coat", category:"People", url:"https://static.wixstatic.com/media/b668a8_c91b685a59024df58aed0f6915daaf23~mv2.png" },
-  { name:"Police Hat", category:"People", url:"https://static.wixstatic.com/media/b668a8_1f2f8ed9be97474e983beb33b2c21213~mv2.png" },
-  { name:"Fire Hat", category:"People", url:"https://static.wixstatic.com/media/b668a8_4b377d88b14740fa8885c8b78bf4442d~mv2.png" },
+  /* ============ (1) People ============ */
   { name:"Woman1", category:"People", url:"https://static.wixstatic.com/media/b668a8_ea7298244cb7464bb4a3b624bc15306f~mv2.png" },
   { name:"Woman2", category:"People", url:"https://static.wixstatic.com/media/b668a8_48d440566cfa49df878f8307972aeccb~mv2.png" },
   { name:"Woman3", category:"People", url:"https://static.wixstatic.com/media/b668a8_1135b3c5488f4ff99d3edbbfe634696e~mv2.png" },
@@ -303,154 +260,186 @@ const MINIATURES = [
   { name:"Man4", category:"People", url:"https://static.wixstatic.com/media/b668a8_22b74d5b41c34f35813849ba9556242c~mv2.png" },
   { name:"Man5", category:"People", url:"https://static.wixstatic.com/media/b668a8_61ed0fb876b2463dab94d50c7d9e2247~mv2.png" },
   { name:"Man6", category:"People", url:"https://static.wixstatic.com/media/b668a8_a9adc6919c6444a88c3fd639a107b6e9~mv2.png" },
-  { name:"Badguy1", category:"People", url:"https://static.wixstatic.com/media/b668a8_16cd1dc15a1c4b2f86bf51202fd375ee~mv2.png" },
-  { name:"Badguy2", category:"People", url:"https://static.wixstatic.com/media/b668a8_552e02ff5e70473a8cac2184e6014720~mv2.png" },
-  { name:"Princess1", category:"People", url:"https://static.wixstatic.com/media/b668a8_2c4013c636fb4481a6a8067596ba36f4~mv2.png" },
-  { name:"Princess2", category:"People", url:"https://static.wixstatic.com/media/b668a8_1beefab48375451395572463804ab431~mv2.png" },
-  { name:"Princess3", category:"People", url:"https://static.wixstatic.com/media/b668a8_c1aed30b8c71404ea65d122dfedfeb9d~mv2.png" },
-  { name:"Princess4", category:"People", url:"https://static.wixstatic.com/media/b668a8_925a6e26391a4f46a98a3a8f4a8ad518~mv2.png" },
-  { name:"Princess5", category:"People", url:"https://static.wixstatic.com/media/b668a8_4c7ec5983bfe481eaf35924204eedca5~mv2.png" },
-  { name:"Prince1", category:"People", url:"https://static.wixstatic.com/media/b668a8_9a2d7cab3cb1458bb2ffa9ccbf017796~mv2.png" },
-  { name:"Prince2", category:"People", url:"https://static.wixstatic.com/media/b668a8_bf4484f272594f6a8d96141b3e97e25f~mv2.png" },
-  { name:"Prince3", category:"People", url:"https://static.wixstatic.com/media/b668a8_205c7b836b51470787d2c136973fb880~mv2.png" },
-  { name:"Prince4", category:"People", url:"https://static.wixstatic.com/media/b668a8_200e3ea49a5c46599240bb65e3145f72~mv2.png" },
 
-  /* ============ NATURE ============ */
-  { name:"Bush1", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_05b9e34aa10b471b9f5a94afca81d315~mv2.png" },
-  { name:"Bush2", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_3fc6659951ae4438b36db32258705de7~mv2.png" },
-  { name:"Sunflower", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_ea18676d826c4eacb0dfca3d1e1353c6~mv2.png" },
-  /* Rose URL was corrupted in your paste (spaces inside). Re-copy later and add back. */
-  { name:"Lilypad", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_4b3b9e4ce3824d3c85fc40a49bbfd447~mv2.png" },
-  { name:"Daffodil", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_70b640d146664654a2a15392f87daf70~mv2.png" },
-  { name:"Clamshell", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_fdba09c2022944a592d44bc3eab3b39b~mv2.png" },
-  { name:"Wishing Well", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_46130a2aea5849d99cf00ad7ed43db97~mv2.png" },
-  { name:"Evergreen Tree", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_3e9082de19a346eda810b218270c650e~mv2.png" },
-  { name:"Waterfall1", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_195f22190f7b401aa6804d3420585117~mv2.png" },
-  { name:"Waterfall2", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_9ae75fe28d0b4bdb9128b61fa07d319b~mv2.png" },
-  { name:"Waterfall3", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_6ae45bcdd6a24ff08f3e7dbc7ebd13df~mv2.png" },
-  { name:"Flowers1", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_c382d8bd74c54d8aa3546ef7943d0184~mv2.png" },
-  { name:"Flowers2", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_24c489c8bb1648fe9ab8c765b65058ac~mv2.png" },
-  { name:"Flowers3", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_c91b7d3aeaac4296b1891bae8ffe3bb3~mv2.png" },
-  { name:"Volcano", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_2bbbe2f776cd45f9b7a02c46c6568d41~mv2.png" },
-  { name:"Tree1", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_20625721a67f4be49b4c3f7652227041~mv2.png" },
-  { name:"Palm Tree", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_33ccf8ec7dbf427581c7516bcb000320~mv2.png" },
-  { name:"Tree2", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_5a01d7bdfa0c478a969cd7ca4683e928~mv2.png" },
-  { name:"River1", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_eb0dc50718854fa38f25c6613d9be5bd~mv2.png" },
-  { name:"River2", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_a987240cad7a438dabb6399fe27b7d30~mv2.png" },
-  { name:"Pond", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_63c60f403c6b4895b3bda76e7037af2f~mv2.png" },
-  { name:"Swamp", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_74153f47083d40d9a06dbbf9d5221ed5~mv2.png" },
-  { name:"Mushroom", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_f5db9288b707498599e8b8d1d0685b00~mv2.png" },
-  { name:"Rainbow", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_65eeca06be2e487d90e35a50912cd53c~mv2.png" },
-  { name:"Fire", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_74d2b03136ea409c9f8c0861f39fd3ae~mv2.png" },
-  { name:"Lightning", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_4b03e40321584656b8264e2733499b70~mv2.png" },
-  { name:"Smoke", category:"Nature", url:"https://static.wixstatic.com/media/b668a8_c7cf7d4b901e4550b172810cca6097be~mv2.png" },
+  /* ============ (2) Medical/Emergency ============ */
+  { name:"Dr coat", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_c91b685a59024df58aed0f6915daaf23~mv2.png" },
+  { name:"Stretcher", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_38b9836c896f40a289bb9651c45ad4b5~mv2.png" },
+  { name:"Ambulance", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_9a82fa170ef0434184acfc757cf21ee6~mv2.png" },
+  { name:"firetruck", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_60985e384a0d4cfc97c9096f0ec801f7~mv2.png" },
+  { name:"Caution tape", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_05fe96692663431b925a6562c1653b2b~mv2.png" },
+  { name:"medicine bottle", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_9bd51a4823214fa093c6dbd7cb1d7581~mv2.png" },
+  { name:"syringe", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_fab355a6d53742678c3be8feb89302b2~mv2.png" },
+  { name:"medicine box", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_16eb4be87fa24538b4a8a37ee0753e61~mv2.png" },
+  { name:"IV", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_751ba5d42f004eb2af977e459c7dc5d9~mv2.png" },
+  { name:"Hospital bed", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_5d6a8ade8b6e4149818fc531e6049dc3~mv2.png" },
+  { name:"Med machine", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_d5ca25b42ca540c9b97631fe213a643d~mv2.png" },
+  { name:"HEART", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_2210bf39c36d49159083e0738169f0bf~mv2.png" },
+  { name:"Cracked heart", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_acf31c6a8de44df89c546c1e5ca36132~mv2.png" },
+  { name:"Broken heart", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_c7dd54633bcc48e8b440fde6f691ea02~mv2.png" },
+  { name:"stitched heart", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_77dd75d90a5a48cea201c642e0baa4f6~mv2.png" },
+  { name:"BLACK HEART", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_cf110ae1ff5b49c689f61516faebd52c~mv2.png" },
+  { name:"blood puddle", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_fc6a1f4ef2fb4e6a922fa47666838f1d~mv2.png" },
 
-  /* ============ OBJECTS (your “THINGS”) ============ */
+  /* ============ (3) Specialty People/Props ============ */
+  { name:"Badguy1", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_16cd1dc15a1c4b2f86bf51202fd375ee~mv2.png" },
+  { name:"Badguy2", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_552e02ff5e70473a8cac2184e6014720~mv2.png" },
+  { name:"crowwn1", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_ce8a57bd867c43439a18f8f76729bed4~mv2.png" },
+  { name:"crown2", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_4409be0d0b5e40959f5e42ad5d429a41~mv2.png" },
+  { name:"Throne", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_06aafd1645a14dbe89ed426ce362a882~mv2.png" },
+  { name:"Princess1", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_2c4013c636fb4481a6a8067596ba36f4~mv2.png" },
+  { name:"Princess2", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_1beefab48375451395572463804ab431~mv2.png" },
+  { name:"Princess3", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_c1aed30b8c71404ea65d122dfedfeb9d~mv2.png" },
+  { name:"princess4", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_925a6e26391a4f46a98a3a8f4a8ad518~mv2.png" },
+  { name:"princess5", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_4c7ec5983bfe481eaf35924204eedca5~mv2.png" },
+  { name:"Prince1", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_9a2d7cab3cb1458bb2ffa9ccbf017796~mv2.png" },
+  { name:"Prince2", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_bf4484f272594f6a8d96141b3e97e25f~mv2.png" },
+  { name:"Prince3", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_205c7b836b51470787d2c136973fb880~mv2.png" },
+  { name:"Prince4", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_200e3ea49a5c46599240bb65e3145f72~mv2.png" },
+  { name:"Police hat", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_1f2f8ed9be97474e983beb33b2c21213~mv2.png" },
+  { name:"handcuffs", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_1fe4b17dd9294c84af35c335e1776c37~mv2.png" },
+  { name:"Fire hat", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_4b377d88b14740fa8885c8b78bf4442d~mv2.png" },
+
+  /* ============ (4) Nature/Elements ============ */
+  { name:"tree1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_20625721a67f4be49b4c3f7652227041~mv2.png" },
+  { name:"tree2", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_5a01d7bdfa0c478a969cd7ca4683e928~mv2.png" },
+  { name:"evergreen tree", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_3e9082de19a346eda810b218270c650e~mv2.png" },
+  { name:"palmtree", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_33ccf8ec7dbf427581c7516bcb000320~mv2.png" },
+  { name:"Bush", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_05b9e34aa10b471b9f5a94afca81d315~mv2.png" },
+  { name:"Clamshell", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_fdba09c2022944a592d44bc3eab3b39b~mv2.png" },
+  { name:"Wishingwell", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_46130a2aea5849d99cf00ad7ed43db97~mv2.png" },
+  { name:"waterfall1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_195f22190f7b401aa6804d3420585117~mv2.png" },
+  { name:"waterfall3", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_6ae45bcdd6a24ff08f3e7dbc7ebd13df~mv2.png" },
+  { name:"river1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_eb0dc50718854fa38f25c6613d9be5bd~mv2.png" },
+  { name:"river2", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_a987240cad7a438dabb6399fe27b7d30~mv2.png" },
+  { name:"pond", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_63c60f403c6b4895b3bda76e7037af2f~mv2.png" },
+  { name:"swamp", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_74153f47083d40d9a06dbbf9d5221ed5~mv2.png" },
+  { name:"Sunflower", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_ea18676d826c4eacb0dfca3d1e1353c6~mv2.png" },
+  { name:"Rose", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_a3df1a809086425faa2eb54e3dbe5304~mv2.png" },
+  { name:"Lilypad", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_4b3b9e4ce3824d3c85fc40a49bbfd447~mv2.png" },
+  { name:"Daffodil", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_70b640d146664654a2a15392f87daf70~mv2.png" },
+  { name:"flowers1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_c382d8bd74c54d8aa3546ef7943d0184~mv2.png" },
+  { name:"flowers2", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_24c489c8bb1648fe9ab8c765b65058ac~mv2.png" },
+  { name:"flowers3", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_c91b7d3aeaac4296b1891bae8ffe3bb3~mv2.png" },
+  { name:"butterfly", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_b218e45641c04915a69ca4d481a9af0e~mv2.png" },
+  { name:"mushroom", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_f5db9288b707498599e8b8d1d0685b00~mv2.png" },
+  { name:"Rainbow", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_65eeca06be2e487d90e35a50912cd53c~mv2.png" },
+  { name:"sun", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_d754e593f6844f2981350afc1cfdf965~mv2.png" },
+  { name:"cloud", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_e553e066a477476790cc6697f6180ca9~mv2.png" },
+  { name:"lightning", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_4b03e40321584656b8264e2733499b70~mv2.png" },
+  { name:"tornado", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_9a81c21e8d2e4d81acbce235d6f5d9dc~mv2.png" },
+  { name:"volcano", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_2bbbe2f776cd45f9b7a02c46c6568d41~mv2.png" },
+  { name:"Fire", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_74d2b03136ea409c9f8c0861f39fd3ae~mv2.png" },
+  { name:"smoke", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_c7cf7d4b901e4550b172810cca6097be~mv2.png" },
+  { name:"cave", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_1636cf5be4f748aeb666a70baf23fa0a~mv2.png" },
+  { name:"Rock1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_4119c34421784d8eaad33e9c0512d438~mv2.png" },
+  { name:"Rock2", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_4731354c41f04127871723da900aebdf~mv2.png" },
+  { name:"Rock3", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_f60a182832534ffaa9efc7f6a6a18be0~mv2.png" },
+
+  /* ============ (5) Transportation ============ */
+  { name:"Stop sign", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_4952a479434e42ce8e638d137d7429c9~mv2.png" },
+  { name:"Traffic cone", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_88c78eca574a46e69aa286df8ca8765d~mv2.png" },
+  { name:"Warning sign", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_2412cea084b84127afdc6b632864c578~mv2.png" },
+  { name:"Caution tape", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_05fe96692663431b925a6562c1653b2b~mv2.png" },
+  { name:"Copcar", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_4b903605d9184e50978b443fa94db35a~mv2.png" },
+  { name:"car1", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_4ca73b3f90354d0ba984339b894c2ac1~mv2.png" },
+  { name:"car2", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_0da9d0b3e87a45dd824d224a88bf750c~mv2.png" },
+  { name:"plane", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_cd9c73abff384002b3b96d882fc95100~mv2.png" },
+  { name:"helicopter", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_77f313f7e8dc47848d917adb99db9eef~mv2.png" },
+  { name:"garbage truck", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_c0573d10a6ea4808a6c0cd60d62ac1eb~mv2.png" },
+  { name:"trucklarge", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_847ccd4bba5845eda359b49fd0e0e394~mv2.png" },
+  { name:"construction1", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_f0a72fd86ea7402cb27edc6449c22edf~mv2.png" },
+  { name:"construction2", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_032d4e20f9614136b15eb8aa1b6866f7~mv2.png" },
+  { name:"hotairballoon", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_ab4e5a339fd34fb4a8e4147b4e62dc12~mv2.png" },
+  { name:"bike", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_2b8aa9cf6ab14f9ab2d8a29d66b93c92~mv2.png" },
+
+  /* ============ (6) Weapons/Death ============ */
+  { name:"grenade", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_0e40d1cdbc324f22b34d2578b637aeee~mv2.png" },
+  { name:"explosion", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_b244133dec124602a2cc81c7c76790d5~mv2.png" },
+  { name:"dynamite", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_bd51b5f4d3c0476c8502d533bf68b67e~mv2.png" },
+  { name:"bomb", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_e9f45d310d7e465b8812fa2a78b375d6~mv2.png" },
+  { name:"gun", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_dd31db128e9349eb9273ec04b2e88732~mv2.png" },
+  { name:"skeleton", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_5c5120ff33e9482c871af40d07713bee~mv2.png" },
+  { name:"coffin base", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_f171bb6d1f454c6b83594a70ab350496~mv2.png" },
+  { name:"coffin lid", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_501eebb0b0104acfa25fc4a5630259e1~mv2.png" },
+  { name:"grave", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_079b29a84a0c4152911ceab636e075d6~mv2.png" },
+  { name:"handcuffs", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_1fe4b17dd9294c84af35c335e1776c37~mv2.png" },
+  { name:"Broken heart", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_c7dd54633bcc48e8b440fde6f691ea02~mv2.png" },
+  { name:"Cracked heart", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_acf31c6a8de44df89c546c1e5ca36132~mv2.png" },
+  { name:"blood puddle", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_fc6a1f4ef2fb4e6a922fa47666838f1d~mv2.png" },
+
+  /* ============ (7) Objects ============ */
   { name:"Makeup", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_dd8b82a4d4bd4194a25f1f6e45a94f79~mv2.png" },
   { name:"Guitar", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_c43409d2197249699e1dab1c762b523e~mv2.png" },
   { name:"Boombox", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_e5a444fe77d442318a3ad871a9365dcc~mv2.png" },
-  { name:"Paint Palette", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_149e5ccf2ca443b281159b1b6639773a~mv2.png" },
+  { name:"Paint palette", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_149e5ccf2ca443b281159b1b6639773a~mv2.png" },
   { name:"Baseball", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_ab19b485c3e74bdc86fcec5c8aa0acee~mv2.png" },
   { name:"Basketball", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_cbafa26dd0524095ae831f4c79107a3a~mv2.png" },
-  { name:"Soccer Ball", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_d9ae3ff34f82408990d951d067fd2936~mv2.png" },
+  { name:"Soccer", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_d9ae3ff34f82408990d951d067fd2936~mv2.png" },
   { name:"Football", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_b9aafa02505443f399d1329bab9a881f~mv2.png" },
-  { name:"Laptop", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_345c0a05a8dc4b6f87c2c2ce1d88b209~mv2.png" },
-  { name:"Cave", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_1636cf5be4f748aeb666a70baf23fa0a~mv2.png" },
-  { name:"Grenade", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_0e40d1cdbc324f22b34d2578b637aeee~mv2.png" },
-  { name:"Explosion", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_b244133dec124602a2cc81c7c76790d5~mv2.png" },
-  { name:"Dynamite", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_bd51b5f4d3c0476c8502d533bf68b67e~mv2.png" },
-  { name:"Bomb", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_e9f45d310d7e465b8812fa2a78b375d6~mv2.png" },
-  { name:"Skeleton", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_5c5120ff33e9482c871af40d07713bee~mv2.png" },
-  { name:"Coffin Base", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_f171bb6d1f454c6b83594a70ab350496~mv2.png" },
-  { name:"Coffin Lid", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_501eebb0b0104acfa25fc4a5630259e1~mv2.png" },
-  { name:"Grave", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_079b29a84a0c4152911ceab636e075d6~mv2.png" },
-  { name:"School Desk", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_5ddcf9990de14f5c847f48afc3ab2d7f~mv2.png" },
-  { name:"Backboard", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_cb619048b6254649a65ed035d9b3577e~mv2.png" },
-  { name:"Backpack", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_85b8bde5546c4e8fbdb1f73f9f83a455~mv2.png" },
-  { name:"Religion Symbol 1", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_c5e1b553c8a94b8a9ec263af2bcd2de1~mv2.png" },
-  { name:"Religion Symbol 2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_aace90b7bda14c179f2bc6b8548a7b27~mv2.png" },
-  { name:"Religion Symbol 3", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_841375b656e8495888ac8b71143b3626~mv2.png" },
-  { name:"Religion Symbol 4", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_36396708245841dc9270a39102fd1334~mv2.png" },
-  { name:"Car1", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_4ca73b3f90354d0ba984339b894c2ac1~mv2.png" },
-  { name:"Garbage Truck", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_c0573d10a6ea4808a6c0cd60d62ac1eb~mv2.png" },
-  { name:"Plane", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_cd9c73abff384002b3b96d882fc95100~mv2.png" },
-  { name:"Helicopter", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_77f313f7e8dc47848d917adb99db9eef~mv2.png" },
-  { name:"Construction1", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_f0a72fd86ea7402cb27edc6449c22edf~mv2.png" },
-  { name:"Construction2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_032d4e20f9614136b15eb8aa1b6866f7~mv2.png" },
-  { name:"Car2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_0da9d0b3e87a45dd824d224a88bf750c~mv2.png" },
-  { name:"Large Truck", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_847ccd4bba5845eda359b49fd0e0e394~mv2.png" },
-  { name:"Treasure Full", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_291fbfbf15144b4fb735b839d6f23021~mv2.png" },
-  { name:"Treasure Empty", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_054fd43d243e4a3fbe3ef6019c7e0516~mv2.png" },
-  { name:"Treasure Closed", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_edb0038eb21a4ae280cfc887560e1a60~mv2.png" },
-  { name:"Garbage", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_0692c6e4c1c04616a70f9c4bdbff73dc~mv2.png" },
-  { name:"Tool Saw", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_c62bdbfc1e0146ea9fb1f6d51d6f0d6d~mv2.png" },
-  { name:"Tool Drill", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_1abf1f22b8354e808f532d56bf4762c9~mv2.png" },
-  { name:"Tool Hammer", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_101b1ca73ab24c4b89fc19bed981d84f~mv2.png" },
-  { name:"Scale", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6e354ad7d56046a8b8facdbadf09d440~mv2.png" },
-  { name:"Present", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_82f578a3024644c38f785d9dc3b6a6a2~mv2.png" },
-  { name:"Key", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_1789129c0e3e47f58f0c4e8de25bdfcf~mv2.png" },
-  { name:"Hot Air Balloon", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_ab4e5a339fd34fb4a8e4147b4e62dc12~mv2.png" },
-  { name:"Handcuffs", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_1fe4b17dd9294c84af35c335e1776c37~mv2.png" },
-  { name:"Gemstone", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_919d5bd1c97e47a4be91e358e523af6e~mv2.png" },
-  { name:"Gemstone2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6adb1c06990741c4841f56136df2b60c~mv2.png" },
-  { name:"Crown1", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_ce8a57bd867c43439a18f8f76729bed4~mv2.png" },
-  { name:"Crown2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_4409be0d0b5e40959f5e42ad5d429a41~mv2.png" },
-  { name:"Cash", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6ccc36b34a02491683430c833fe4847c~mv2.png" },
-  { name:"Balloons", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_854c4c5de8614678b9c402058601c5af~mv2.png" },
-  { name:"Blood Puddle", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_fc6a1f4ef2fb4e6a922fa47666838f1d~mv2.png" },
-  { name:"Bike", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_2b8aa9cf6ab14f9ab2d8a29d66b93c92~mv2.png" },
-  { name:"Medicine Bottle", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_9bd51a4823214fa093c6dbd7cb1d7581~mv2.png" },
-  { name:"Syringe", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_fab355a6d53742678c3be8feb89302b2~mv2.png" },
-  { name:"Medicine Box", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_16eb4be87fa24538b4a8a37ee0753e61~mv2.png" },
-  { name:"IV", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_751ba5d42f004eb2af977e459c7dc5d9~mv2.png" },
-  { name:"Hospital Bed", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_5d6a8ade8b6e4149818fc531e6049dc3~mv2.png" },
-  { name:"Med Machine", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_d5ca25b42ca540c9b97631fe213a643d~mv2.png" },
-  { name:"Brickway1", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_d65419ce540a45509d4af01c71313860~mv2.png" },
-  { name:"Brickway2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_eb9fac0a1f8b4a56995a2f9fc3688699~mv2.png" },
-  { name:"Fence", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_257eb29730d54e6e88bab697daffca53~mv2.png" },
-  { name:"Barbed Wire", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_9bfec0edd6094a35a8ce717de7f55f04~mv2.png" },
-  { name:"Jail", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_d58e3645022a4e04a28b853bcf520eb4~mv2.png" },
-  { name:"Bridge1", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_cb493bc755ae43d8b806e3a969403473~mv2.png" },
-  { name:"Bridge2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_60c6c38a64b848508d0380ff96a40a15~mv2.png" },
-  { name:"Rock1", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_4119c34421784d8eaad33e9c0512d438~mv2.png" },
-  { name:"Rock2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_4731354c41f04127871723da900aebdf~mv2.png" },
-  { name:"Rock3", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_f60a182832534ffaa9efc7f6a6a18be0~mv2.png" },
-  { name:"Money Bag", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6612927ac5c648c18300e46104d7f246~mv2.png" },
-  { name:"Stop Sign", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_4952a479434e42ce8e638d137d7429c9~mv2.png" },
-  { name:"Traffic Cone", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_88c78eca574a46e69aa286df8ca8765d~mv2.png" },
-  { name:"Warning Sign", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_2412cea084b84127afdc6b632864c578~mv2.png" },
-  { name:"Caution Tape", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_05fe96692663431b925a6562c1653b2b~mv2.png" },
-  { name:"iPad", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6dffa09d36ae4f8b8f5ee2fc87037675~mv2.png" },
-  { name:"iPhone", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_f0f014f906774ed6abf5716e3d237739~mv2.png" },
+  { name:"laptop", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_345c0a05a8dc4b6f87c2c2ce1d88b209~mv2.png" },
+  { name:"schooldesk", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_5ddcf9990de14f5c847f48afc3ab2d7f~mv2.png" },
+  { name:"backboard", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_cb619048b6254649a65ed035d9b3577e~mv2.png" },
+  { name:"backpack", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_85b8bde5546c4e8fbdb1f73f9f83a455~mv2.png" },
+  { name:"religionsym", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_c5e1b553c8a94b8a9ec263af2bcd2de1~mv2.png" },
+  { name:"religionsym2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_aace90b7bda14c179f2bc6b8548a7b27~mv2.png" },
+  { name:"religionsym3", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_841375b656e8495888ac8b71143b3626~mv2.png" },
+  { name:"religion4", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_36396708245841dc9270a39102fd1334~mv2.png" },
+  { name:"treasurefull", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_291fbfbf15144b4fb735b839d6f23021~mv2.png" },
+  { name:"treasure empty", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_054fd43d243e4a3fbe3ef6019c7e0516~mv2.png" },
+  { name:"treasureclosed", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_edb0038eb21a4ae280cfc887560e1a60~mv2.png" },
+  { name:"garbage", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_0692c6e4c1c04616a70f9c4bdbff73dc~mv2.png" },
+  { name:"toolsaw", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_c62bdbfc1e0146ea9fb1f6d51d6f0d6d~mv2.png" },
+  { name:"tooldrill", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_1abf1f22b8354e808f532d56bf4762c9~mv2.png" },
+  { name:"toolhammer", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_101b1ca73ab24c4b89fc19bed981d84f~mv2.png" },
+  { name:"scale", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6e354ad7d56046a8b8facdbadf09d440~mv2.png" },
+  { name:"present", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_82f578a3024644c38f785d9dc3b6a6a2~mv2.png" },
+  { name:"key", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_1789129c0e3e47f58f0c4e8de25bdfcf~mv2.png" },
+  { name:"gemstone", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_919d5bd1c97e47a4be91e358e523af6e~mv2.png" },
+  { name:"gemstone1", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6adb1c06990741c4841f56136df2b60c~mv2.png" },
+  { name:"cash", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6ccc36b34a02491683430c833fe4847c~mv2.png" },
+  { name:"balloons", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_854c4c5de8614678b9c402058601c5af~mv2.png" },
+  { name:"Money bag", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6612927ac5c648c18300e46104d7f246~mv2.png" },
+  { name:"Ipad", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6dffa09d36ae4f8b8f5ee2fc87037675~mv2.png" },
+  { name:"Iphone", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_f0f014f906774ed6abf5716e3d237739~mv2.png" },
 
-  /* ============ ANIMALS ============ */
-  { name:"Jellyfish", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_043513278d81471e9631941c16284f2e~mv2.png" },
-  { name:"Octopus", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_091cf365689d4028842301bbeb046117~mv2.png" },
-  { name:"Shark1", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_b5ee2562a7ff4780914a9aaa1c7ac221~mv2.png" },
-  { name:"Shark2", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_a9b1251af4aa41809c5e95d74250b2ee~mv2.png" },
-  { name:"Crab", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_9386e58a489049288e1020ee7daf744b~mv2.png" },
-  { name:"Dog1", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_453f56c01e5f46c798cc2dbd5958ae50~mv2.png" },
+  /* ============ (8) Animals ============ */
+  { name:"jellyfish", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_043513278d81471e9631941c16284f2e~mv2.png" },
+  { name:"octopus", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_091cf365689d4028842301bbeb046117~mv2.png" },
+  { name:"shark1", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_b5ee2562a7ff4780914a9aaa1c7ac221~mv2.png" },
+  { name:"shark2", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_a9b1251af4aa41809c5e95d74250b2ee~mv2.png" },
+  { name:"crab", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_9386e58a489049288e1020ee7daf744b~mv2.png" },
+  { name:"dog1", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_453f56c01e5f46c798cc2dbd5958ae50~mv2.png" },
   { name:"Dog2", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_bd4e961c75874c0fa2197b61cad8b283~mv2.png" },
   { name:"Cat1", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_2fad965697d64c0c8f4830e1cb1fa723~mv2.png" },
   { name:"Cat2", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_a106a40ed18d4242bee3a0183df8b8bc~mv2.png" },
   { name:"Cat3", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_c369401b163c41eea7819cd16542cd67~mv2.png" },
   { name:"Narwhal", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_f7cc8067177141ad9893ec484dba131d~mv2.png" },
-  { name:"Bird Nest", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_abb691d9600544d9a75c548dde8baee3~mv2.png" },
+  { name:"Birdnest", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_abb691d9600544d9a75c548dde8baee3~mv2.png" },
   { name:"Pufferfish", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_4455cf77019547e7a5e046245f1f6f5d~mv2.png" },
 
-  /* ============ STRUCTURES ============ */
-  { name:"Sunken Ship", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_66ad70ed6ef8479f91104231d6298ddd~mv2.png" },
-  { name:"Religion1", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_26a230b376454c2db6b5947ca57ff2cb~mv2.png" },
-  { name:"Religion2", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_2979f846cc4c4786b8fd15e02c4550e5~mv2.png" },
-  { name:"Religion3", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_f0934c6f66c24e298cad1755c4629868~mv2.png" },
-  { name:"School", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_c775020d2c5346e996d733942f9a4807~mv2.png" },
-  { name:"Police Station", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_e5819770c018430ea5c49913de9ae016~mv2.png" },
-  { name:"Hospital", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_becde4249b314bd8ac1fe0e7031acfb4~mv2.png" },
-  { name:"House", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_d0a995940f384ec99d01f464f79ee642~mv2.png" },
-  { name:"Mansion", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_802030705c864d7897abdb58abf37b0b~mv2.png" },
-  { name:"Castle", category:"Structures", url:"https://static.wixstatic.com/media/b668a8_31f09879b5324fb0b1cd208387739c5e~mv2.png" },
+  /* ============ (9) Structures/Fences ============ */
+  { name:"Bridge1", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_cb493bc755ae43d8b806e3a969403473~mv2.png" },
+  { name:"Bridge2", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_60c6c38a64b848508d0380ff96a40a15~mv2.png" },
+  { name:"Fence", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_257eb29730d54e6e88bab697daffca53~mv2.png" },
+  { name:"Barbedwire", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_9bfec0edd6094a35a8ce717de7f55f04~mv2.png" },
+  { name:"Jail", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_d58e3645022a4e04a28b853bcf520eb4~mv2.png" },
+  { name:"sunken ship", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_66ad70ed6ef8479f91104231d6298ddd~mv2.png" },
+  { name:"Religion1", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_26a230b376454c2db6b5947ca57ff2cb~mv2.png" },
+  { name:"Religion2", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_2979f846cc4c4786b8fd15e02c4550e5~mv2.png" },
+  { name:"Religion3", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_f0934c6f66c24e298cad1755c4629868~mv2.png" },
+  { name:"School", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_c775020d2c5346e996d733942f9a4807~mv2.png" },
+  { name:"Police", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_e5819770c018430ea5c49913de9ae016~mv2.png" },
+  { name:"Hospital", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_becde4249b314bd8ac1fe0e7031acfb4~mv2.png" },
+  { name:"House", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_d0a995940f384ec99d01f464f79ee642~mv2.png" },
+  { name:"Mansion", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_802030705c864d7897abdb58abf37b0b~mv2.png" },
+  { name:"castle", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_31f09879b5324fb0b1cd208387739c5e~mv2.png" },
+  { name:"wall1", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_7db47bab49b94931a80e3c2a64d1a7a5~mv2.png" },
+  { name:"wall2", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_2b54f40b43b24919a581ba164ebbdc85~mv2.png" },
+  { name:"wall3", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_94ead6e65ef44607a594670df79ced9d~mv2.png" },
+  { name:"wall4", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_a9537fcec02d48008496f390be139c82~mv2.png" },
+  { name:"wall5", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_c8da26a5cfea467983a11761e620c74e~mv2.png" },
 
-  /* ============ FANTASY ============ */
+  /* ============ (10) Fantasy ============ */
   { name:"Unicorn", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_8f3f72a5abc848d8a47f5f0cec7ca34c~mv2.png" },
   { name:"Troll", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_30e1cc46d0724c72bd09641752f8d5dc~mv2.png" },
   { name:"Wizard", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_3cda0813bb8d479c9a51cbea8afe2f96~mv2.png" },
@@ -459,15 +448,23 @@ const MINIATURES = [
   { name:"Cape", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_e9f1b2d575634dfea751d201eb05777b~mv2.png" },
   { name:"Dragon1", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_d179c3aa3cb64a3fb1b750325f6dc398~mv2.png" },
   { name:"Dragon2", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_2e44ca22ebc846429ae6a24bf47452a6~mv2.png" },
-  { name:"Dragon Baby", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_fc13a565c9db42cebc485e494b2fcab4~mv2.png" },
-  { name:"Magic Carpet", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_76ea693e5c444af98e940a2e8bdca51a~mv2.png" },
-  { name:"Fairy Wings1", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_8c5e1f1c1c3a422bae00b89718657d37~mv2.png" },
-  { name:"Fairy Wings2", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_2cb427d41a6f47e6a7dbfee8fe249537~mv2.png" },
-  { name:"Genie", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_cd6421777ba44b4fa0fe51029ea3478d~mv2.png" },
-  { name:"Witch Hat", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_827757cb5d954882b34920184c608d1a~mv2.png" },
-  { name:"Crystal Ball", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_780827b5c4bb4eb8a287fdb529cec24f~mv2.png" },
-  { name:"Potion", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_c6dec3641a9143799b2781f31c16f5dc~mv2.png" },
-  { name:"Unicorn Poop", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_6bfc49b478ce456cbe78ed8fbbe6a32c~mv2.png" }
+  { name:"dragon baby", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_fc13a565c9db42cebc485e494b2fcab4~mv2.png" },
+  { name:"magic carpet", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_76ea693e5c444af98e940a2e8bdca51a~mv2.png" },
+  { name:"fairy wings1", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_8c5e1f1c1c3a422bae00b89718657d37~mv2.png" },
+  { name:"fairy wings2", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_2cb427d41a6f47e6a7dbfee8fe249537~mv2.png" },
+  { name:"genie", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_cd6421777ba44b4fa0fe51029ea3478d~mv2.png" },
+  { name:"witchhat", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_827757cb5d954882b34920184c608d1a~mv2.png" },
+  { name:"crystal ball", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_780827b5c4bb4eb8a287fdb529cec24f~mv2.png" },
+  { name:"potion", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_c6dec3641a9143799b2781f31c16f5dc~mv2.png" },
+  { name:"unicorn poop", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_6bfc49b478ce456cbe78ed8fbbe6a32c~mv2.png" },
+
+  /* ============ (11) Household/Food ============ */
+  { name:"Kitchen table", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_ecb7950f612a4607aa294dafd63ccd01~mv2.png" },
+  { name:"Kitchen chair", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_2ae7ec9d34ac4976b5d945ec2b95084c~mv2.png" },
+  { name:"baby bottle", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_fa0e8dc6f25a446aa6f68f1da1427e49~mv2.png" },
+  { name:"crib1", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_c57bfe1054a548949c71ddacb7d6f094~mv2.png" },
+  { name:"crib2", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_b9ebbad68e6c45f59ac9f4191dbbd432~mv2.png" },
+  { name:"big bed 1", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_eb86a0b313734637a4ad21fb044b7f54~mv2.png" }
 ];
 
 /* =========================
@@ -476,7 +473,6 @@ const MINIATURES = [
 const tray = document.getElementById("tray");
 const thumbGrid = document.getElementById("thumbGrid");
 const tabsEl = document.getElementById("tabs");
-const search = document.getElementById("search");
 
 const frontBtn = document.getElementById("frontBtn");
 const backBtn  = document.getElementById("backBtn");
@@ -486,16 +482,10 @@ const exportBtn = document.getElementById("exportBtn");
 
 let selected = null;
 let zCounter = 10;
-let activeCategory = "All";
+let activeCategory = CATEGORIES[0];
 
 /* =========================
-   THUMB PLACEHOLDER (fixes "some thumbs never load")
-========================= */
-const TINY_PLACEHOLDER =
-  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-
-/* =========================
-   SELECTION
+   SELECTION + DELETE KEY
 ========================= */
 function setButtons(state){
   frontBtn.disabled = !state;
@@ -513,6 +503,18 @@ function select(el){
   el.classList.add("selected");
   setButtons(true);
 }
+function deleteSelected(){
+  if (selected){
+    selected.remove();
+    deselect();
+  }
+}
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Delete" || e.key === "Backspace"){
+    e.preventDefault();
+    deleteSelected();
+  }
+});
 
 /* =========================
    TRANSFORM HELPERS
@@ -526,7 +528,6 @@ function applyTransformVars(el){
   el.style.setProperty("--sx", (flipX * scale).toString());
   el.style.setProperty("--sy", scale.toString());
 }
-
 function angleDeg(dx, dy){ return Math.atan2(dy, dx) * 180 / Math.PI; }
 function normalizeDeg(deg){
   let d = ((deg % 360) + 360) % 360;
@@ -536,7 +537,12 @@ function normalizeDeg(deg){
 
 /* =========================
    PLACE
+   - Only “People” starts smaller
+   - Lower minScale so minis can get REALLY small
 ========================= */
+function initialScaleForCategory(cat){
+  return (cat === "People") ? 0.6 : 1.0;
+}
 function place(m, x=null, y=null){
   const rect = tray.getBoundingClientRect();
   if (x === null) x = rect.width / 2;
@@ -549,10 +555,9 @@ function place(m, x=null, y=null){
   wrap.style.zIndex = (++zCounter);
 
   wrap.dataset.rot = "0";
-// Only People start smaller; everything else stays original size
-wrap.dataset.scale = (m.category === "People") ? "0.5" : "1";
+  wrap.dataset.scale = String(initialScaleForCategory(m.category));
   wrap.dataset.flipX = "1";
-  wrap.dataset.minScale = "0.35";
+  wrap.dataset.minScale = "0.02";   // allow very small
   wrap.dataset.maxScale = "3";
 
   const img = document.createElement("img");
@@ -569,13 +574,19 @@ wrap.dataset.scale = (m.category === "People") ? "0.5" : "1";
 
   const resizeHandle = document.createElement("div");
   resizeHandle.className = "handle resizeHandle";
-  resizeHandle.title = "Resize / Flip";
+  resizeHandle.title = "Resize";
   resizeHandle.innerHTML = "<span>↔︎</span>";
+
+  const flipHandle = document.createElement("div");
+  flipHandle.className = "handle flipHandle";
+  flipHandle.title = "Flip";
+  flipHandle.innerHTML = "<span>⇋</span>";
 
   wrap.appendChild(img);
   wrap.appendChild(rotateLine);
   wrap.appendChild(rotateHandle);
   wrap.appendChild(resizeHandle);
+  wrap.appendChild(flipHandle);
   tray.appendChild(wrap);
 
   applyTransformVars(wrap);
@@ -583,14 +594,15 @@ wrap.dataset.scale = (m.category === "People") ? "0.5" : "1";
   wrap.addEventListener("click", (e) => { e.stopPropagation(); select(wrap); });
   wrap.addEventListener("pointerdown", (e) => move(e, wrap));
   rotateHandle.addEventListener("pointerdown", (e) => rotate(e, wrap));
-  resizeHandle.addEventListener("pointerdown", (e) => resizeAndFlip(e, wrap));
+  resizeHandle.addEventListener("pointerdown", (e) => resize(e, wrap));
+  flipHandle.addEventListener("click", (e) => { e.stopPropagation(); flip(wrap); });
 
   select(wrap);
 }
 
 /* Move */
 function move(e, el){
-  if (e.target.closest(".rotateHandle") || e.target.closest(".resizeHandle")) return;
+  if (e.target.closest(".rotateHandle") || e.target.closest(".resizeHandle") || e.target.closest(".flipHandle")) return;
   e.stopPropagation();
   select(el);
 
@@ -604,7 +616,6 @@ function move(e, el){
     el.style.left = startLeft + (ev.clientX - rect.left - startX) + "px";
     el.style.top  = startTop  + (ev.clientY - rect.top  - startY) + "px";
   }
-
   window.addEventListener("pointermove", onmove);
   window.addEventListener("pointerup", () => window.removeEventListener("pointermove", onmove), { once:true });
 }
@@ -636,20 +647,18 @@ function rotate(e, el){
     el.dataset.rot = String(newRot);
     applyTransformVars(el);
   }
-
   window.addEventListener("pointermove", onmove);
   window.addEventListener("pointerup", () => window.removeEventListener("pointermove", onmove), { once:true });
 }
 
-/* Resize + Flip */
-function resizeAndFlip(e, el){
+/* Resize (no “reverse”; just scales with clamp) */
+function resize(e, el){
   e.preventDefault();
   e.stopPropagation();
   select(el);
 
   const startScale = parseFloat(el.dataset.scale || "1");
-  const startFlipX = parseInt(el.dataset.flipX || "1", 10);
-  const minScale = parseFloat(el.dataset.minScale || "0.35");
+  const minScale = parseFloat(el.dataset.minScale || "0.02");
   const maxScale = parseFloat(el.dataset.maxScale || "3");
 
   const startX = e.clientX;
@@ -659,51 +668,31 @@ function resizeAndFlip(e, el){
     const dx = ev.clientX - startX;
     const dy = ev.clientY - startY;
 
-    // sensitivity
-    const delta = (dx + dy) / 280;
-
+    // smoother: use diagonal drag; up/left shrinks, down/right grows
+    const delta = (dx + dy) / 320;
     let newScale = startScale + delta;
-    let flipX = startFlipX;
-
-    // flip if dragged far enough negative
-    if (newScale < minScale){
-      flipX = -startFlipX;
-      newScale = minScale + Math.min(0.6, (minScale - newScale)); // gentle rebound
-    }
-
     newScale = Math.max(minScale, Math.min(maxScale, newScale));
+
     el.dataset.scale = String(newScale);
-    el.dataset.flipX = String(flipX);
     applyTransformVars(el);
   }
-
   window.addEventListener("pointermove", onmove);
   window.addEventListener("pointerup", () => window.removeEventListener("pointermove", onmove), { once:true });
 }
 
+/* Flip */
+function flip(el){
+  const current = parseInt(el.dataset.flipX || "1", 10);
+  el.dataset.flipX = String(current * -1);
+  applyTransformVars(el);
+}
+
 /* =========================
-   LIBRARY (FAST LOADING) — improved thumb loading reliability
+   LIBRARY (lazy thumbs)
 ========================= */
 let io = null;
-
 function ensureObserver(){
   if (io) return;
-
-  // Fallback: if IntersectionObserver isn't supported, load immediately
-  if (!("IntersectionObserver" in window)) {
-    io = {
-      observe(img){
-        const src = img.getAttribute("data-src");
-        if (src){
-          img.src = src;
-          img.removeAttribute("data-src");
-        }
-      },
-      unobserve(){}
-    };
-    return;
-  }
-
   io = new IntersectionObserver((entries) => {
     for (const entry of entries){
       if (!entry.isIntersecting) continue;
@@ -715,29 +704,25 @@ function ensureObserver(){
       }
       io.unobserve(img);
     }
-  }, { root: thumbGrid, rootMargin: "300px" }); // ✅ preload earlier
+  }, { root: thumbGrid, rootMargin: "200px" });
 }
 
 function renderTabs(){
   tabsEl.innerHTML = "";
-  CATEGORIES.forEach(cat => {
+  for (const cat of CATEGORIES){
     const b = document.createElement("button");
     b.className = "tab" + (cat === activeCategory ? " active" : "");
     b.textContent = cat;
     b.onclick = () => { activeCategory = cat; renderTabs(); renderLibrary(); };
     tabsEl.appendChild(b);
-  });
+  }
 }
 
 function renderLibrary(){
   ensureObserver();
   thumbGrid.innerHTML = "";
-  const q = (search.value || "").toLowerCase();
 
-  const list = MINIATURES.filter(m =>
-    (activeCategory === "All" || m.category === activeCategory) &&
-    m.name.toLowerCase().includes(q)
-  );
+  const list = MINIATURES.filter(m => m.category === activeCategory);
 
   for (const m of list){
     const div = document.createElement("div");
@@ -751,13 +736,7 @@ function renderLibrary(){
     const img = document.createElement("img");
     img.alt = m.name;
 
-    // Use thumbUrl if you later add it; otherwise load url
-    const thumbSrc = m.thumbUrl || m.url;
-
-    // ✅ give a real src immediately (prevents “never loads” cases)
-    img.src = TINY_PLACEHOLDER;
-
-    img.setAttribute("data-src", thumbSrc);
+    img.setAttribute("data-src", m.url);
     img.loading = "lazy";
     img.decoding = "async";
     img.fetchPriority = "low";
@@ -772,7 +751,6 @@ function renderLibrary(){
     io.observe(img);
   }
 }
-search.oninput = renderLibrary;
 
 /* =========================
    CONTROLS
@@ -780,37 +758,21 @@ search.oninput = renderLibrary;
 tray.addEventListener("click", () => deselect());
 frontBtn.onclick = () => { if (selected) selected.style.zIndex = (++zCounter); };
 backBtn.onclick  = () => { if (selected) selected.style.zIndex = 1; };
-deleteBtn.onclick= () => { if (selected){ selected.remove(); deselect(); } };
+deleteBtn.onclick= () => deleteSelected();
 clearBtn.onclick = () => { tray.innerHTML = ""; deselect(); };
-
-/* ✅ Keyboard Delete / Backspace deletes selected mini (but not while typing) */
-document.addEventListener("keydown", (e) => {
-  const el = document.activeElement;
-  const typing =
-    el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
-
-  if (typing) return;
-  if (!selected) return;
-
-  if (e.key === "Delete" || e.key === "Backspace") {
-    e.preventDefault();
-    selected.remove();
-    deselect();
-  }
-});
 
 /* =========================
    EXPORT
 ========================= */
 exportBtn.onclick = () => {
   if (typeof html2canvas !== "function"){
-    alert("Export is still loading. Try again in a moment.");
+    alert("Save is still loading. Try again in a moment.");
     return;
   }
   html2canvas(tray).then(canvas => {
     const link = document.createElement("a");
     link.download = "sand-tray.png";
-    link.href = canvas.toDataURL();
+    link.href = canvas.toDataURL("image/png");
     link.click();
   });
 };
@@ -826,6 +788,5 @@ setButtons(false);
 renderTabs();
 renderLibrary();
 </script>
-
 </body>
 </html>
