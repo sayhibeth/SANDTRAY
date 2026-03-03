@@ -2,264 +2,822 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Card Endorsement Game</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sand Tray</title>
+
 <style>
-  :root { --card-w: 640px; --card-h: 480px; }
-  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-         background:#f6f7f9; color:#222; margin:0; padding:18px;
-         display:flex; flex-direction:column; align-items:center; }
+:root{
+  --bg:#f5f5f5;
+  --border:#d8d8d8;
+  --shadow:0 8px 24px rgba(0,0,0,.08);
+  --handle:#ffffff;
+  --handleBorder:#bdbdbd;
+  --handleText:#333;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background:var(--bg);
+  height:100vh;
+  overflow:hidden;
+}
+.app{display:flex; height:100vh;}
 
-  #cardAreaWrap { width:100%; max-width:var(--card-w); margin-bottom:18px; background:transparent; }
-  #cardArea { width:var(--card-w); height:var(--card-h); position:relative; }
-  .card-surface {
-    position:absolute; inset:0;
-    border-radius:12px; overflow:hidden;
-    box-shadow:0 12px 28px rgba(8,12,20,0.08);
-    background:transparent; display:flex; align-items:center; justify-content:center;
-  }
-  .card-surface img { width:100%; height:100%; object-fit:contain; border-radius:0; }
+/* LEFT — TRAY */
+.trayWrap{ flex:3; position:relative; height:100vh; }
+.tray{
+  width:100%;
+  height:100vh;
+  position:relative;
+  overflow:hidden;
+  background-image:url("https://static.wixstatic.com/media/b668a8_f10b4ce8cde646ef82378815e2e6178d~mv2.png");
+  background-position:center;
+  background-repeat:no-repeat;
+  background-size:contain;
+}
 
-  .flip-transition {
-    transition: transform 360ms ease;
-    transform-origin: center center;
-    will-change: transform;
-  }
+/* MINIATURES (placed) */
+.placed{
+  position:absolute;
+  left:0; top:0;
+  width:140px;
 
-  #finalMessage {
-    display:none;
-    width:100%; height:100%;
-    align-items:center; justify-content:center; text-align:center;
-    font-size:28px; font-weight:800; color:#0f766e; padding:24px;
-  }
+  --rot: 0deg;
+  --sx: 1;
+  --sy: 1;
 
-  .hiddenLabel { display:none !important; }
+  transform: translate(-50%,-50%) rotate(var(--rot)) scale(var(--sx), var(--sy));
+  transform-origin: 50% 50%;
+  user-select:none;
+  touch-action:none;
+}
+.placed img{
+  width:100%;
+  pointer-events:none;
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,.18));
+}
+.placed.selected{
+  outline:3px solid rgba(43,108,176,.6);
+  outline-offset:4px;
+  border-radius:8px;
+}
 
-  .controls { margin-top:14px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-  .btn { padding:12px 16px; border-radius:10px; border:0; font-weight:800; cursor:pointer; }
-  .btn-yes { background:#16a34a; color:#fff; }
-  .btn-no  { background:#e11d48; color:#fff; }
-  .btn-back { background:#0f766e; color:#fff; }
-  .btn-restart { background:#64748b; color:#fff; }
-  .btn-start { background:#0ea5e9; color:#fff; }
-  .btn[disabled]{ opacity:.5; cursor:not-allowed; }
-  .progress { font-size:12px; color:#555; margin-top:4px; }
+/* Handles */
+.handle{
+  display:none;
+  position:absolute;
+  width:30px;
+  height:30px;
+  background:var(--handle);
+  border:2px solid var(--handleBorder);
+  border-radius:10px;
+  box-shadow:0 6px 14px rgba(0,0,0,.12);
+  color:var(--handleText);
+  font-weight:800;
+  font-size:16px;
+  line-height:1;
+  align-items:center;
+  justify-content:center;
+  z-index:3;
+}
+.placed.selected .handle{ display:flex; }
 
-  #review { margin-top:18px; width:100%; max-width:860px; text-align:center; }
-  #review .counts { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; font-size:12px; color:#444; }
-  #review .counts .pill { background:#fff; border-radius:999px; padding:6px 10px; box-shadow:0 8px 18px rgba(10,14,20,0.04); }
+.rotateHandle{
+  left:50%;
+  top:-44px;
+  transform:translateX(-50%);
+  cursor:grab;
+  border-radius:999px;
+}
+.rotateHandle:active{ cursor:grabbing; }
 
-  #footerControls { margin-top:12px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-  #downloadBtn { background:#0ea5e9; color:#fff; }
-  #downloadBtn:disabled { opacity:.5; cursor:not-allowed; background:#7dd3fc; }
+.rotateLine{
+  position:absolute;
+  left:50%;
+  top:-16px;
+  transform:translateX(-50%);
+  width:3px;
+  height:16px;
+  background:#bdbdbd;
+  display:none;
+  z-index:2;
+}
+.placed.selected .rotateLine{ display:block; }
 
-  @media (max-width:720px){
-    :root{ --card-w: 92vw; --card-h: calc(92vw * 0.75); }
-    #cardArea { width:var(--card-w); height:var(--card-h); }
-  }
+/* resize bottom-right, flip bottom-left (prevents “reverse” collisions) */
+.resizeHandle{ right:-14px; bottom:-14px; cursor:nwse-resize; border-radius:10px; }
+.flipHandle{ left:-14px; bottom:-14px; cursor:pointer; border-radius:10px; }
+
+/* RIGHT — LIBRARY */
+.library{
+  flex:1;
+  background:#fff;
+  border-left:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  min-width:260px;
+}
+.libHeader{ padding:12px; border-bottom:1px solid var(--border); }
+.tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
+}
+.tab{
+  border:1px solid var(--border);
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  cursor:pointer;
+  background:#fff;
+}
+.tab.active{
+  border-color:#2b6cb0;
+  box-shadow:0 0 0 3px rgba(43,108,176,.15);
+}
+
+/* thumbs */
+.thumbGrid{
+  padding:10px;
+  overflow:auto;
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:8px;
+}
+.thumb{
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:6px;
+  cursor:pointer;
+  background:#fff;
+}
+.thumb img{
+  width:100%;
+  height:64px;
+  object-fit:contain;
+  pointer-events:none;
+  display:block;
+}
+.thumb .ph{
+  width:100%;
+  height:64px;
+  border-radius:8px;
+  background:linear-gradient(90deg, #f2f2f2, #e9e9e9, #f2f2f2);
+  background-size:200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+@keyframes shimmer{
+  0%{ background-position: 200% 0; }
+  100%{ background-position: -200% 0; }
+}
+
+/* CONTROLS */
+.controls{
+  position:absolute;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(255,255,255,.95);
+  padding:10px;
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  z-index:50;
+}
+.controls button{
+  margin:4px;
+  padding:8px 10px;
+  border-radius:6px;
+  border:1px solid var(--border);
+  cursor:pointer;
+}
+.controls button:disabled{opacity:.5;}
 </style>
 </head>
-<body>
 
-<div id="cardAreaWrap">
-  <div id="cardArea">
-    <div class="card-surface">
-      <img id="cardImg" class="flip-transition" src="" alt="">
-      <div id="finalMessage">All done! 😊</div>
-      <div id="cardTitle" class="hiddenLabel"></div>
-      <div id="cardCategory" class="hiddenLabel"></div>
+<body>
+<div class="app">
+
+  <div class="trayWrap">
+    <div id="tray" class="tray"></div>
+
+    <div class="controls">
+      <button id="frontBtn" disabled>Bring to Front</button>
+      <button id="backBtn" disabled>Send to Back</button>
+      <button id="deleteBtn" disabled>Delete</button>
+      <button id="clearBtn">Clear</button>
+      <button id="exportBtn">SAVE TRAY IMAGE</button>
     </div>
   </div>
 
-  <div class="controls" id="startControls">
-    <button id="startBtn" class="btn btn-start">START</button>
-  </div>
+  <aside class="library">
+    <div class="libHeader">
+      <strong>Miniatures</strong>
+      <div class="tabs" id="tabs"></div>
+    </div>
+    <div id="thumbGrid" class="thumbGrid"></div>
+  </aside>
 
-  <div class="controls" id="gameControls" style="display:none;">
-    <button id="yesBtn" class="btn btn-yes">YES</button>
-    <button id="noBtn" class="btn btn-no">NO</button>
-    <button id="backBtn" class="btn btn-back" disabled>Back</button>
-    <button id="restartBtn" class="btn btn-restart">Restart</button>
-  </div>
-
-  <div class="progress" id="progressText"></div>
-</div>
-
-<div id="review">
-  <div class="counts" id="countPills"></div>
-  <div id="footerControls">
-    <button id="downloadBtn" class="btn" disabled>Download YES List (PDF)</button>
-  </div>
 </div>
 
 <script>
-/* ---------- All Categories and Cards ---------- */
-const categories = {
-  "Avoidance/Denial": {
-    cover:"https://static.wixstatic.com/media/b668a8_3abbbcf111794484be03336180d81c10~mv2.png",
-    cards:[
-      { title:"Avoiding Sleep", image:"https://static.wixstatic.com/media/b668a8_3866d12b302d4403907bbba023101f9d~mv2.png" },
-      { title:"avoiding certain situations or places", image:"https://static.wixstatic.com/media/b668a8_c3f5a0c17d4f483cb2b26343e88e4d3a~mv2.png" },
-      { title:"Avoiding getting close to people", image:"https://static.wixstatic.com/media/b668a8_6b47f54a27aa42349a311290cca856dd~mv2.jpg" },
-      { title:"Avoiding thinking about it", image:"https://static.wixstatic.com/media/b668a8_c814356b15ac495db501c8d4720cddbf~mv2.png" },
-      { title:"Avoiding talking about it", image:"https://static.wixstatic.com/media/b668a8_11024a0da25a40a8be5f5208d3ffc5a0~mv2.png" },
-      { title:"Pretending it did not happen", image:"https://static.wixstatic.com/media/b668a8_824cf645c57b42d7a4ccc7ba04725c58~mv2.png" },
-      { title:"Telling others you are OK", image:"https://static.wixstatic.com/media/b668a8_2b2e505ac9cd4723970b1434a0d8f319~mv2.png" },
-      { title:"Telling yourself that what happened wasn't a big deal, or wasn't that bad.", image:"https://static.wixstatic.com/media/b668a8_dd86211a2b6b4eb5aafa920408117e59~mv2.png" }
-    ]
-  },
-  "Numbing/Escaping": {
-    cover:"https://static.wixstatic.com/media/b668a8_3abbbcf111794484be03336180d81c10~mv2.png",
-    cards:[
-      { title:"Zoning out", image:"https://static.wixstatic.com/media/b668a8_57a5e6ed45df4edc90f9f462ba3aa9f9~mv2.png" },
-      { title:"Staying away from home", image:"https://static.wixstatic.com/media/b668a8_77bba77132ed4694aae2b9bd5c792c7d~mv2.png" },
-      { title:"Sleeping a lot", image:"https://static.wixstatic.com/media/b668a8_808493fe8de9441696189efd9ceb90ec~mv2.png" },
-      { title:"Shutting down", image:"https://static.wixstatic.com/media/b668a8_1049df005cca489198fc5e1a060acaf3~mv2.png" },
-      { title:"Eating more than you need or eating lots of unhealthy foods", image:"https://static.wixstatic.com/media/b668a8_765209eda944407a81596897a0b03e50~mv2.png" },
-      { title:"Using drugs, alcohol, or nicotine", image:"https://static.wixstatic.com/media/b668a8_ee7d8c6497fa40ffaaf283d1fe68915f~mv2.png" }
-    ]
-  },
-  "Emotional/Physical Release and/or Processing": {
-    cover:"https://static.wixstatic.com/media/b668a8_3abbbcf111794484be03336180d81c10~mv2.png",
-    cards:[
-      { title:"Writing poetry, journaling your thoughts and feelings, or writing stories", image:"https://static.wixstatic.com/media/b668a8_0ca939dc5b3a47e89537a91fc05c4bd1~mv2.png" },
-      { title:"Singing or writing songs", image:"https://static.wixstatic.com/media/b668a8_491e7d47f0164abfaa99370e48449b0c~mv2.png" },
-      { title:"Outbursts of emotion or anger", image:"https://static.wixstatic.com/media/b668a8_a81871bc32464487bf432784ea724699~mv2.png" },
-      { title:"Making art, drawing, or crafting", image:"https://static.wixstatic.com/media/b668a8_20cff2953bdd43be8e1bf28aa4987f66~mv2.png" },
-      { title:"Dancing", image:"https://static.wixstatic.com/media/b668a8_d2b746c1c430443183f38bc89cfd1e9d~mv2.png" },
-      { title:"Crying", image:"https://static.wixstatic.com/media/b668a8_9a9af3724bd94c64a2efb07e471e4401~mv2.png" }
-    ]
-  },
-  "Support Seeking/Self Care": {
-    cover:"https://static.wixstatic.com/media/b668a8_3abbbcf111794484be03336180d81c10~mv2.png",
-    cards:[
-      { title:"Spending time at a park or outside in nature", image:"https://static.wixstatic.com/media/b668a8_74f8a3d3a4d748ffa82a445c1eb1dad4~mv2.png" },
-      { title:"Talking to people who are supportive and care", image:"https://static.wixstatic.com/media/b668a8_097987bcb55045f6a7c635136ef2f715~mv2.png" },
-      { title:"Spending time with people who have also been through hard things", image:"https://static.wixstatic.com/media/b668a8_49a27eef1e7e473fbb788f5a0a1bbe5d~mv2.png" },
-      { title:"Doing relaxation activities", image:"https://static.wixstatic.com/media/b668a8_7d5d3c18ad2549219c2d382843a06743~mv2.png" },
-      { title:"Praying or engaging in religious activities", image:"https://static.wixstatic.com/media/b668a8_f35a16543fb742b3a55e22fd00a849ff~mv2.png" },
-      { title:"Using positive self-talk or thought stopping", image:"https://static.wixstatic.com/media/b668a8_e9b95b5809694c76bb6360c3a005d55a~mv2.png" },
-      { title:"Listening to or making music", image:"https://static.wixstatic.com/media/b668a8_27f1f53a89564cfeaa4a9bf1ee8e07fe~mv2.png" },
-      { title:"Using humor or laughter", image:"https://static.wixstatic.com/media/b668a8_99057e0e20de4340bb7d28a35027c89e~mv2.png" },
-      { title:"Finding hobbies, activities, or behaviors that give you a feeling of control", image:"https://static.wixstatic.com/media/b668a8_520f038f1c894f2c8c9f415364bc8c07~mv2.png" },
-      { title:"Asking someone for help", image:"https://static.wixstatic.com/media/b668a8_2efca7b205bf417e848e4aa8310a2b1b~mv2.png" }
-    ]
-  },
-  "Reenacting": {
-    cover:"https://static.wixstatic.com/media/b668a8_3abbbcf111794484be03336180d81c10~mv2.png",
-    cards:[
-      { title:"Play fighting or play wrestling", image:"https://static.wixstatic.com/media/b668a8_c23730bf3eae4665b62dd1ad8673633f~mv2.png" },
-      { title:"Hurting your body", image:"https://static.wixstatic.com/media/b668a8_eb55dd1be4174d008e52ddbb5f4b09d8~mv2.png" },
-      { title:"Seeking out or maintaining negative or toxic friendships", image:"https://static.wixstatic.com/media/b668a8_f427f879eecc4a63a3aa5cb4ea2341fa~mv2.png" },
-      { title:"Being mean to yourself or saying everything was your fault", image:"https://static.wixstatic.com/media/b668a8_e960c7c9d0d345449e9df431380a811d~mv2.jpg" },
-      { title:"Acting mean or aggressive to keep people at a distance", image:"https://static.wixstatic.com/media/b668a8_c26e28ec939344f89569d7c32c05cfe1~mv2.jpg" }
-    ]
-  },
-  "Distraction": {
-    cover:"https://static.wixstatic.com/media/b668a8_3abbbcf111794484be03336180d81c10~mv2.png",
-    cards:[
-      { title:"Playing lots of video games", image:"https://static.wixstatic.com/media/b668a8_3b79fc8a09c74bab9dac47705985866f~mv2.png" },
-      { title:"Watching lots of TV", image:"https://static.wixstatic.com/media/b668a8_063f2ef6bd2d4730b8b7351173bdc6ca~mv2.png" },
-      { title:"Spending a lot of time on social media", image:"https://static.wixstatic.com/media/b668a8_d71a6919f6594f0397da6201cdce5b32~mv2.png" }
-    ]
-  },
-  "Sensory/Adrenaline-Seeking": {
-    cover:"https://static.wixstatic.com/media/b668a8_3abbbcf111794484be03336180d81c10~mv2.png",
-    cards:[
-      { title:"Doing things that are risky or unsafe", image:"https://static.wixstatic.com/media/b668a8_ddbde24b146f44018b66d50321d12da0~mv2.png" },
-      { title:"Seeking out or maintaining high stress relationships", image:"https://static.wixstatic.com/media/b668a8_f78aa0a333eb49798b18e339ef75eb00~mv2.png" },
-      { title:"Starting arguments or fights", image:"https://static.wixstatic.com/media/b668a8_389eaf0fea1f459a9f2ed9d465380124~mv2.png" },
-      { title:"Seeking out or maintaining high drama relationships", image:"https://static.wixstatic.com/media/b668a8_e48c2f75bc014193a2320e671b3f2764~mv2.png" }
-    ]
-  }
-};
+/* =========================
+   11 EXACT CATEGORY NAMES
+========================= */
+const CATEGORIES = [
+  "People",
+  "Medical/Emergency",
+  "Specialty People/Props",
+  "Nature/Elements",
+  "Transportation",
+  "Weapons/Death",
+  "Objects",
+  "Animals",
+  "Structures/Fences",
+  "Fantasy",
+  "Household/Food"
+];
 
-/* ---------- Build deck ---------- */
-function buildOrderedDeck(){
-  const desired=["Emotional/Physical Release and/or Processing","Support Seeking/Self Care","Numbing/Escaping","Avoidance/Denial"];
-  const all=Object.keys(categories);
-  const rest=all.filter(c=>!desired.includes(c));
-  const order=[...desired,...rest];
-  const d=[{title:"Intro",category:"Intro",image:"https://static.wixstatic.com/media/b668a8_3abbbcf111794484be03336180d81c10~mv2.png",isIntro:true}];
-  order.forEach(cat=>{ const c=categories[cat]; if(!c)return; c.cards.forEach(card=>d.push({...card,category:cat,cover:c.cover})); });
-  return d;
+/* =========================
+   MINIATURES — EXACT LINKS
+   Note: Rose link had spacing in your paste; using the corrected URL you confirmed:
+   https://static.wixstatic.com/media/b668a8_a3df1a809086425faa2eb54e3dbe5304~mv2.png
+========================= */
+const MINIATURES = [
+  /* ============ (1) People ============ */
+  { name:"Woman1", category:"People", url:"https://static.wixstatic.com/media/b668a8_ea7298244cb7464bb4a3b624bc15306f~mv2.png" },
+  { name:"Woman2", category:"People", url:"https://static.wixstatic.com/media/b668a8_48d440566cfa49df878f8307972aeccb~mv2.png" },
+  { name:"Woman3", category:"People", url:"https://static.wixstatic.com/media/b668a8_1135b3c5488f4ff99d3edbbfe634696e~mv2.png" },
+  { name:"Woman4", category:"People", url:"https://static.wixstatic.com/media/b668a8_04912ac8d89348ce85ff2393cef56628~mv2.png" },
+  { name:"Woman5", category:"People", url:"https://static.wixstatic.com/media/b668a8_02f7006352514b898f040e0c51906a58~mv2.png" },
+  { name:"Woman6", category:"People", url:"https://static.wixstatic.com/media/b668a8_c461af71b98e49859da690ad78fa9739~mv2.png" },
+  { name:"Woman7", category:"People", url:"https://static.wixstatic.com/media/b668a8_bd53ebe505d9424e941de66e5abb54ec~mv2.png" },
+  { name:"Woman8", category:"People", url:"https://static.wixstatic.com/media/b668a8_dc0d98f0c3064ac8ab4f516518805ace~mv2.png" },
+  { name:"Man1", category:"People", url:"https://static.wixstatic.com/media/b668a8_282180e6331344fe9bdc2982969b6ccf~mv2.png" },
+  { name:"Man2", category:"People", url:"https://static.wixstatic.com/media/b668a8_8b0a579415b946e196c38248f576bc03~mv2.png" },
+  { name:"Man3", category:"People", url:"https://static.wixstatic.com/media/b668a8_0794ae9f631f41348991eb79030f20f1~mv2.png" },
+  { name:"Man4", category:"People", url:"https://static.wixstatic.com/media/b668a8_22b74d5b41c34f35813849ba9556242c~mv2.png" },
+  { name:"Man5", category:"People", url:"https://static.wixstatic.com/media/b668a8_61ed0fb876b2463dab94d50c7d9e2247~mv2.png" },
+  { name:"Man6", category:"People", url:"https://static.wixstatic.com/media/b668a8_a9adc6919c6444a88c3fd639a107b6e9~mv2.png" },
+  { name:"Baby1", category:"People", url:"https://static.wixstatic.com/media/b668a8_7b66a0da11314516921c081a4e463352~mv2.png" },
+  { name:"Baby2", category:"People", url:"https://static.wixstatic.com/media/b668a8_ead3b11c186a4d6fb4052cbe96cbc382~mv2.png" },
+  { name:"Man7", category:"People", url:"https://static.wixstatic.com/media/b668a8_2b51ae4418ea41f887dd6443285105ec~mv2.png" },
+  { name:"woman9", category:"People", url:"https://static.wixstatic.com/media/b668a8_3707a67ac5aa4c1fabe7831786382772~mv2.png" },
+  { name:"woman10", category:"People", url:"https://static.wixstatic.com/media/b668a8_9ed0f4e1c44b46bf8a5bb54afa992140~mv2.png" },
+  { name:"kid1", category:"People", url:"https://static.wixstatic.com/media/b668a8_f59f2c0c03db4f88984c6d33624c9cc0~mv2.png" },
+  { name:"kid2", category:"People", url:"https://static.wixstatic.com/media/b668a8_dd40e90315b44f15b07fa1dc983dd60d~mv2.png" },
+  { name:"kid3", category:"People", url:"https://static.wixstatic.com/media/b668a8_6e7ab0a61c1d4e5a950bf972ff99fafb~mv2.png" },
+  { name:"kid4", category:"People", url:"https://static.wixstatic.com/media/b668a8_b99fdef2d6474607b9c0841eeda923b1~mv2.png" },
+  { name:"kid5", category:"People", url:"https://static.wixstatic.com/media/b668a8_d99a8ea826c64e0c8895a45a1268ae9f~mv2.png" },
+  { name:"kid6", category:"People", url:"https://static.wixstatic.com/media/b668a8_5f964484103f4c85b15d9e646153d705~mv2.png" },
+  { name:"kid7", category:"People", url:"https://static.wixstatic.com/media/b668a8_33ea81ed655244c9985ab0e4b1abcbd3~mv2.png" },
+
+  /* ============ (3) Specialty People/Props ============ */
+  { name:"Badguy1", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_16cd1dc15a1c4b2f86bf51202fd375ee~mv2.png" },
+  { name:"Badguy2", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_552e02ff5e70473a8cac2184e6014720~mv2.png" },
+  { name:"crowwn1", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_ce8a57bd867c43439a18f8f76729bed4~mv2.png" },
+  { name:"crown2", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_4409be0d0b5e40959f5e42ad5d429a41~mv2.png" },
+  { name:"shield", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_e690568b90f44f5db635c9974379be90~mv2.png" },
+  { name:"sword", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_7679c56f4b104df8a8caf12fd4f33d98~mv2.png" },
+  { name:"Throne", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_06aafd1645a14dbe89ed426ce362a882~mv2.png" },
+  { name:"Princess1", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_2c4013c636fb4481a6a8067596ba36f4~mv2.png" },
+  { name:"Princess2", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_1beefab48375451395572463804ab431~mv2.png" },
+  { name:"Princess3", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_c1aed30b8c71404ea65d122dfedfeb9d~mv2.png" },
+  { name:"princess4", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_925a6e26391a4f46a98a3a8f4a8ad518~mv2.png" },
+  { name:"princess5", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_4c7ec5983bfe481eaf35924204eedca5~mv2.png" },
+  { name:"princess6", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_841dc92e16604b3c8c85841d1cc86145~mv2.png" },
+  { name:"Prince1", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_9a2d7cab3cb1458bb2ffa9ccbf017796~mv2.png" },
+  { name:"Prince2", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_bf4484f272594f6a8d96141b3e97e25f~mv2.png" },
+  { name:"Prince3", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_205c7b836b51470787d2c136973fb880~mv2.png" },
+  { name:"Prince4", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_200e3ea49a5c46599240bb65e3145f72~mv2.png" },
+  { name:"knight", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_03b5d772f10c453286eba3ebb913413c~mv2.png" },
+  { name:"ninja", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_8b94901d54434a4a9234e300a5b11c1c~mv2.png" },
+  { name:"Police hat", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_1f2f8ed9be97474e983beb33b2c21213~mv2.png" },
+  { name:"handcuffs", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_1fe4b17dd9294c84af35c335e1776c37~mv2.png" },
+  { name:"groom", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_488a78b758db417aaf74eb2c1c7ed74f~mv2.png" },
+  { name:"bride", category:"Specialty People/Props", url:"https://static.wixstatic.com/media/b668a8_96d3d9c2822145a9a66db262b124f8dd~mv2.png" },
+
+
+  /* ============ (4) Nature/Elements ============ */
+  { name:"tree1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_20625721a67f4be49b4c3f7652227041~mv2.png" },
+  { name:"tree2", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_5a01d7bdfa0c478a969cd7ca4683e928~mv2.png" },
+  { name:"evergreen tree", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_3e9082de19a346eda810b218270c650e~mv2.png" },
+  { name:"palmtree", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_33ccf8ec7dbf427581c7516bcb000320~mv2.png" },
+  { name:"Bush", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_05b9e34aa10b471b9f5a94afca81d315~mv2.png" },
+  { name:"Clamshell", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_fdba09c2022944a592d44bc3eab3b39b~mv2.png" },
+  { name:"Wishingwell", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_46130a2aea5849d99cf00ad7ed43db97~mv2.png" },
+  { name:"waterfall1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_195f22190f7b401aa6804d3420585117~mv2.png" },
+  { name:"waterfall3", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_6ae45bcdd6a24ff08f3e7dbc7ebd13df~mv2.png" },
+  { name:"river1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_eb0dc50718854fa38f25c6613d9be5bd~mv2.png" },
+  { name:"river2", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_a987240cad7a438dabb6399fe27b7d30~mv2.png" },
+  { name:"pond", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_63c60f403c6b4895b3bda76e7037af2f~mv2.png" },
+  { name:"swamp", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_74153f47083d40d9a06dbbf9d5221ed5~mv2.png" },
+  { name:"Sunflower", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_ea18676d826c4eacb0dfca3d1e1353c6~mv2.png" },
+  { name:"Rose", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_a3df1a809086425faa2eb54e3dbe5304~mv2.png" },
+  { name:"Lilypad", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_4b3b9e4ce3824d3c85fc40a49bbfd447~mv2.png" },
+  { name:"Daffodil", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_70b640d146664654a2a15392f87daf70~mv2.png" },
+  { name:"flowers1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_c382d8bd74c54d8aa3546ef7943d0184~mv2.png" },
+  { name:"flowers2", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_24c489c8bb1648fe9ab8c765b65058ac~mv2.png" },
+  { name:"flowers3", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_c91b7d3aeaac4296b1891bae8ffe3bb3~mv2.png" },
+  { name:"butterfly", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_b218e45641c04915a69ca4d481a9af0e~mv2.png" },
+  { name:"mushroom", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_f5db9288b707498599e8b8d1d0685b00~mv2.png" },
+  { name:"Rainbow", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_65eeca06be2e487d90e35a50912cd53c~mv2.png" },
+  { name:"sun", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_d754e593f6844f2981350afc1cfdf965~mv2.png" },
+  { name:"cloud", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_e553e066a477476790cc6697f6180ca9~mv2.png" },
+  { name:"lightning", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_4b03e40321584656b8264e2733499b70~mv2.png" },
+  { name:"tornado", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_9a81c21e8d2e4d81acbce235d6f5d9dc~mv2.png" },
+  { name:"volcano", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_2bbbe2f776cd45f9b7a02c46c6568d41~mv2.png" },
+  { name:"Fire", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_74d2b03136ea409c9f8c0861f39fd3ae~mv2.png" },
+  { name:"smoke", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_c7cf7d4b901e4550b172810cca6097be~mv2.png" },
+  { name:"cave", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_1636cf5be4f748aeb666a70baf23fa0a~mv2.png" },
+  { name:"Rock1", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_4119c34421784d8eaad33e9c0512d438~mv2.png" },
+  { name:"Rock2", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_4731354c41f04127871723da900aebdf~mv2.png" },
+  { name:"Rock3", category:"Nature/Elements", url:"https://static.wixstatic.com/media/b668a8_f60a182832534ffaa9efc7f6a6a18be0~mv2.png" },
+
+  /* ============ (2) Medical/Emergency ============ */
+  { name:"Dr coat", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_c91b685a59024df58aed0f6915daaf23~mv2.png" },
+  { name:"Stretcher", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_38b9836c896f40a289bb9651c45ad4b5~mv2.png" },
+  { name:"Ambulance", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_9a82fa170ef0434184acfc757cf21ee6~mv2.png" },
+  { name:"firetruck", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_60985e384a0d4cfc97c9096f0ec801f7~mv2.png" },
+  { name:"Caution tape", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_05fe96692663431b925a6562c1653b2b~mv2.png" },
+  { name:"medicine bottle", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_9bd51a4823214fa093c6dbd7cb1d7581~mv2.png" },
+  { name:"syringe", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_fab355a6d53742678c3be8feb89302b2~mv2.png" },
+  { name:"medicine box", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_16eb4be87fa24538b4a8a37ee0753e61~mv2.png" },
+  { name:"IV", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_751ba5d42f004eb2af977e459c7dc5d9~mv2.png" },
+  { name:"Hospital bed", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_5d6a8ade8b6e4149818fc531e6049dc3~mv2.png" },
+  { name:"Med machine", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_d5ca25b42ca540c9b97631fe213a643d~mv2.png" },
+  { name:"HEART", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_2210bf39c36d49159083e0738169f0bf~mv2.png" },
+  { name:"Cracked heart", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_acf31c6a8de44df89c546c1e5ca36132~mv2.png" },
+  { name:"Broken heart", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_c7dd54633bcc48e8b440fde6f691ea02~mv2.png" },
+  { name:"stitched heart", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_77dd75d90a5a48cea201c642e0baa4f6~mv2.png" },
+  { name:"BLACK HEART", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_cf110ae1ff5b49c689f61516faebd52c~mv2.png" },
+  { name:"blood puddle", category:"Medical/Emergency", url:"https://static.wixstatic.com/media/b668a8_fc6a1f4ef2fb4e6a922fa47666838f1d~mv2.png" },
+
+  /* ============ (5) Transportation ============ */
+  { name:"Stop sign", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_4952a479434e42ce8e638d137d7429c9~mv2.png" },
+  { name:"Traffic cone", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_88c78eca574a46e69aa286df8ca8765d~mv2.png" },
+  { name:"Warning sign", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_2412cea084b84127afdc6b632864c578~mv2.png" },
+  { name:"Caution tape", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_05fe96692663431b925a6562c1653b2b~mv2.png" },
+  { name:"Copcar", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_4b903605d9184e50978b443fa94db35a~mv2.png" },
+  { name:"car1", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_4ca73b3f90354d0ba984339b894c2ac1~mv2.png" },
+  { name:"car2", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_0da9d0b3e87a45dd824d224a88bf750c~mv2.png" },
+  { name:"plane", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_cd9c73abff384002b3b96d882fc95100~mv2.png" },
+  { name:"helicopter", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_77f313f7e8dc47848d917adb99db9eef~mv2.png" },
+  { name:"garbage truck", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_c0573d10a6ea4808a6c0cd60d62ac1eb~mv2.png" },
+  { name:"trucklarge", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_847ccd4bba5845eda359b49fd0e0e394~mv2.png" },
+  { name:"construction1", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_f0a72fd86ea7402cb27edc6449c22edf~mv2.png" },
+  { name:"construction2", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_032d4e20f9614136b15eb8aa1b6866f7~mv2.png" },
+  { name:"hotairballoon", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_ab4e5a339fd34fb4a8e4147b4e62dc12~mv2.png" },
+  { name:"bike", category:"Transportation", url:"https://static.wixstatic.com/media/b668a8_2b8aa9cf6ab14f9ab2d8a29d66b93c92~mv2.png" },
+
+  /* ============ (6) Weapons/Death ============ */
+  { name:"grenade", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_0e40d1cdbc324f22b34d2578b637aeee~mv2.png" },
+  { name:"explosion", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_b244133dec124602a2cc81c7c76790d5~mv2.png" },
+  { name:"dynamite", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_bd51b5f4d3c0476c8502d533bf68b67e~mv2.png" },
+  { name:"gun", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_dd31db128e9349eb9273ec04b2e88732~mv2.png" },
+  { name:"bomb", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_e9f45d310d7e465b8812fa2a78b375d6~mv2.png" },
+  { name:"gun", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_dd31db128e9349eb9273ec04b2e88732~mv2.png" },
+  { name:"skeleton", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_5c5120ff33e9482c871af40d07713bee~mv2.png" },
+  { name:"coffin base", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_f171bb6d1f454c6b83594a70ab350496~mv2.png" },
+  { name:"coffin lid", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_501eebb0b0104acfa25fc4a5630259e1~mv2.png" },
+  { name:"grave", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_079b29a84a0c4152911ceab636e075d6~mv2.png" },
+  { name:"handcuffs", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_1fe4b17dd9294c84af35c335e1776c37~mv2.png" },
+  { name:"Broken heart", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_c7dd54633bcc48e8b440fde6f691ea02~mv2.png" },
+  { name:"Cracked heart", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_acf31c6a8de44df89c546c1e5ca36132~mv2.png" },
+  { name:"blood puddle", category:"Weapons/Death", url:"https://static.wixstatic.com/media/b668a8_fc6a1f4ef2fb4e6a922fa47666838f1d~mv2.png" },
+
+  /* ============ (7) Objects ============ */
+  { name:"Makeup", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_dd8b82a4d4bd4194a25f1f6e45a94f79~mv2.png" },
+  { name:"Guitar", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_c43409d2197249699e1dab1c762b523e~mv2.png" },
+  { name:"Boombox", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_e5a444fe77d442318a3ad871a9365dcc~mv2.png" },
+  { name:"Paint palette", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_149e5ccf2ca443b281159b1b6639773a~mv2.png" },
+  { name:"Baseball", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_ab19b485c3e74bdc86fcec5c8aa0acee~mv2.png" },
+  { name:"Basketball", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_cbafa26dd0524095ae831f4c79107a3a~mv2.png" },
+  { name:"Soccer", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_d9ae3ff34f82408990d951d067fd2936~mv2.png" },
+  { name:"Football", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_b9aafa02505443f399d1329bab9a881f~mv2.png" },
+  { name:"laptop", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_345c0a05a8dc4b6f87c2c2ce1d88b209~mv2.png" },
+  { name:"schooldesk", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_5ddcf9990de14f5c847f48afc3ab2d7f~mv2.png" },
+  { name:"backboard", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_cb619048b6254649a65ed035d9b3577e~mv2.png" },
+  { name:"backpack", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_85b8bde5546c4e8fbdb1f73f9f83a455~mv2.png" },
+  { name:"religionsym", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_c5e1b553c8a94b8a9ec263af2bcd2de1~mv2.png" },
+  { name:"religionsym2", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_aace90b7bda14c179f2bc6b8548a7b27~mv2.png" },
+  { name:"religionsym3", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_841375b656e8495888ac8b71143b3626~mv2.png" },
+  { name:"religion4", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_36396708245841dc9270a39102fd1334~mv2.png" },
+  { name:"treasurefull", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_291fbfbf15144b4fb735b839d6f23021~mv2.png" },
+  { name:"treasure empty", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_054fd43d243e4a3fbe3ef6019c7e0516~mv2.png" },
+  { name:"treasureclosed", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_edb0038eb21a4ae280cfc887560e1a60~mv2.png" },
+  { name:"garbage", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_0692c6e4c1c04616a70f9c4bdbff73dc~mv2.png" },
+  { name:"toolsaw", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_c62bdbfc1e0146ea9fb1f6d51d6f0d6d~mv2.png" },
+  { name:"tooldrill", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_1abf1f22b8354e808f532d56bf4762c9~mv2.png" },
+  { name:"toolhammer", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_101b1ca73ab24c4b89fc19bed981d84f~mv2.png" },
+  { name:"scale", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6e354ad7d56046a8b8facdbadf09d440~mv2.png" },
+  { name:"present", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_82f578a3024644c38f785d9dc3b6a6a2~mv2.png" },
+  { name:"key", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_1789129c0e3e47f58f0c4e8de25bdfcf~mv2.png" },
+  { name:"gemstone", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_919d5bd1c97e47a4be91e358e523af6e~mv2.png" },
+  { name:"gemstone1", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6adb1c06990741c4841f56136df2b60c~mv2.png" },
+  { name:"cash", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6ccc36b34a02491683430c833fe4847c~mv2.png" },
+  { name:"balloons", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_854c4c5de8614678b9c402058601c5af~mv2.png" },
+  { name:"Money bag", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6612927ac5c648c18300e46104d7f246~mv2.png" },
+  { name:"Ipad", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_6dffa09d36ae4f8b8f5ee2fc87037675~mv2.png" },
+  { name:"Iphone", category:"Objects", url:"https://static.wixstatic.com/media/b668a8_f0f014f906774ed6abf5716e3d237739~mv2.png" },
+
+  /* ============ (8) Animals ============ */
+  { name:"jellyfish", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_043513278d81471e9631941c16284f2e~mv2.png" },
+  { name:"octopus", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_091cf365689d4028842301bbeb046117~mv2.png" },
+  { name:"shark1", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_b5ee2562a7ff4780914a9aaa1c7ac221~mv2.png" },
+  { name:"shark2", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_a9b1251af4aa41809c5e95d74250b2ee~mv2.png" },
+  { name:"crab", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_9386e58a489049288e1020ee7daf744b~mv2.png" },
+  { name:"dog1", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_453f56c01e5f46c798cc2dbd5958ae50~mv2.png" },
+  { name:"Dog2", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_bd4e961c75874c0fa2197b61cad8b283~mv2.png" },
+  { name:"Cat1", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_2fad965697d64c0c8f4830e1cb1fa723~mv2.png" },
+  { name:"Cat2", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_a106a40ed18d4242bee3a0183df8b8bc~mv2.png" },
+  { name:"Cat3", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_c369401b163c41eea7819cd16542cd67~mv2.png" },
+  { name:"Narwhal", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_f7cc8067177141ad9893ec484dba131d~mv2.png" },
+  { name:"Birdnest", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_abb691d9600544d9a75c548dde8baee3~mv2.png" },
+  { name:"Pufferfish", category:"Animals", url:"https://static.wixstatic.com/media/b668a8_4455cf77019547e7a5e046245f1f6f5d~mv2.png" },
+
+  /* ============ (9) Structures/Fences ============ */
+  { name:"Bridge1", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_cb493bc755ae43d8b806e3a969403473~mv2.png" },
+  { name:"Bridge2", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_60c6c38a64b848508d0380ff96a40a15~mv2.png" },
+  { name:"Fence", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_257eb29730d54e6e88bab697daffca53~mv2.png" },
+  { name:"Barbedwire", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_9bfec0edd6094a35a8ce717de7f55f04~mv2.png" },
+  { name:"Jail", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_d58e3645022a4e04a28b853bcf520eb4~mv2.png" },
+  { name:"sunken ship", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_66ad70ed6ef8479f91104231d6298ddd~mv2.png" },
+  { name:"Religion1", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_26a230b376454c2db6b5947ca57ff2cb~mv2.png" },
+  { name:"Religion2", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_2979f846cc4c4786b8fd15e02c4550e5~mv2.png" },
+  { name:"Religion3", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_f0934c6f66c24e298cad1755c4629868~mv2.png" },
+  { name:"School", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_c775020d2c5346e996d733942f9a4807~mv2.png" },
+  { name:"Police", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_e5819770c018430ea5c49913de9ae016~mv2.png" },
+  { name:"Hospital", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_becde4249b314bd8ac1fe0e7031acfb4~mv2.png" },
+  { name:"House", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_d0a995940f384ec99d01f464f79ee642~mv2.png" },
+  { name:"Mansion", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_802030705c864d7897abdb58abf37b0b~mv2.png" },
+  { name:"castle", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_31f09879b5324fb0b1cd208387739c5e~mv2.png" },
+  { name:"arch", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_fda4edcbdddd45b4afca4bc58582001c~mv2.png" },
+  { name:"rockwall", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_9a1e01ef1f5242759112ad82a71f9649~mv2.png" },
+  { name:"wall1", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_7db47bab49b94931a80e3c2a64d1a7a5~mv2.png" },
+  { name:"wall2", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_2b54f40b43b24919a581ba164ebbdc85~mv2.png" },
+  { name:"wall3", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_94ead6e65ef44607a594670df79ced9d~mv2.png" },
+  { name:"wall4", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_a9537fcec02d48008496f390be139c82~mv2.png" },
+  { name:"wall5", category:"Structures/Fences", url:"https://static.wixstatic.com/media/b668a8_c8da26a5cfea467983a11761e620c74e~mv2.png" },
+
+  /* ============ (10) Fantasy ============ */
+  { name:"Unicorn", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_8f3f72a5abc848d8a47f5f0cec7ca34c~mv2.png" },
+  { name:"Troll", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_30e1cc46d0724c72bd09641752f8d5dc~mv2.png" },
+  { name:"Wizard", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_3cda0813bb8d479c9a51cbea8afe2f96~mv2.png" },
+  { name:"Mermaid1", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_2c04ff8b326940c2830de0ad3cc4cffb~mv2.png" },
+  { name:"Gnomes", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_091c30711a2441eb8f09098a6665c109~mv2.png" },
+  { name:"Cape", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_e9f1b2d575634dfea751d201eb05777b~mv2.png" },
+  { name:"Dragon1", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_d179c3aa3cb64a3fb1b750325f6dc398~mv2.png" },
+  { name:"Dragon2", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_2e44ca22ebc846429ae6a24bf47452a6~mv2.png" },
+  { name:"dragon baby", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_fc13a565c9db42cebc485e494b2fcab4~mv2.png" },
+  { name:"magic carpet", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_76ea693e5c444af98e940a2e8bdca51a~mv2.png" },
+  { name:"fairy wings1", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_8c5e1f1c1c3a422bae00b89718657d37~mv2.png" },
+  { name:"fairy wings2", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_2cb427d41a6f47e6a7dbfee8fe249537~mv2.png" },
+  { name:"genie", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_cd6421777ba44b4fa0fe51029ea3478d~mv2.png" },
+  { name:"witchhat", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_827757cb5d954882b34920184c608d1a~mv2.png" },
+  { name:"crystal ball", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_780827b5c4bb4eb8a287fdb529cec24f~mv2.png" },
+  { name:"magic wanf", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_e4d6ce82418a43afb691dc434b5f2402~mv2.png" },
+  { name:"potion", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_c6dec3641a9143799b2781f31c16f5dc~mv2.png" },
+  { name:"unicorn poop", category:"Fantasy", url:"https://static.wixstatic.com/media/b668a8_6bfc49b478ce456cbe78ed8fbbe6a32c~mv2.png" },
+
+  /* ============ (11) Household/Food ============ */
+  { name:"Kitchen table", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_ecb7950f612a4607aa294dafd63ccd01~mv2.png" },
+  { name:"food1", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_0d5db6855b344030acf2cbfe79a20f2c~mv2.png" },
+  { name:"food2", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_9b3be64f7214488eaab364cf62d42730~mv2.png" },
+  { name:"food3", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_cff6c58c00d8423e91913c8731c7b12f~mv2.png" },
+  { name:"food4", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_513841950fb043cea75a7f62fdc68d51~mv2.png" },
+  { name:"food5", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_d92d9b941d12400db58190d2bc5df5d9~mv2.png" },
+  { name:"food6", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_3789e1d6c8f44d998907fb0d561d6e2c~mv2.png" },
+  { name:"food7", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_344be48687ea43e498da2be94018dc21~mv2.png" },
+  { name:"food8", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_1965a529edd0440dbb830f5c973daa40~mv2.png" },
+  { name:"food9", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_9aeaf6f7b71b4b5f879fe074cd0ee131~mv2.png" },
+  { name:"baby bottle", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_fa0e8dc6f25a446aa6f68f1da1427e49~mv2.png" },
+  { name:"crib1", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_c57bfe1054a548949c71ddacb7d6f094~mv2.png" },
+  { name:"crib2", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_b9ebbad68e6c45f59ac9f4191dbbd432~mv2.png" },
+  { name:"big bed 1", category:"Household/Food", url:"https://static.wixstatic.com/media/b668a8_eb86a0b313734637a4ad21fb044b7f54~mv2.png" }
+];
+
+/* =========================
+   ELEMENTS + STATE
+========================= */
+const tray = document.getElementById("tray");
+const thumbGrid = document.getElementById("thumbGrid");
+const tabsEl = document.getElementById("tabs");
+
+const frontBtn = document.getElementById("frontBtn");
+const backBtn  = document.getElementById("backBtn");
+const deleteBtn = document.getElementById("deleteBtn");
+const clearBtn = document.getElementById("clearBtn");
+const exportBtn = document.getElementById("exportBtn");
+
+let selected = null;
+let zCounter = 10;
+let activeCategory = CATEGORIES[0];
+
+/* =========================
+   SELECTION + DELETE KEY
+========================= */
+function setButtons(state){
+  frontBtn.disabled = !state;
+  backBtn.disabled  = !state;
+  deleteBtn.disabled = !state;
 }
-let deck=buildOrderedDeck();
+function deselect(){
+  if (selected) selected.classList.remove("selected");
+  selected = null;
+  setButtons(false);
+}
+function select(el){
+  if (selected && selected !== el) selected.classList.remove("selected");
+  selected = el;
+  el.classList.add("selected");
+  setButtons(true);
+}
+function deleteSelected(){
+  if (selected){
+    selected.remove();
+    deselect();
+  }
+}
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Delete" || e.key === "Backspace"){
+    e.preventDefault();
+    deleteSelected();
+  }
+});
 
-/* ---------- State ---------- */
-let idx=0, uidSeq=0, started=false;
-const yesPicks=[], actionStack=[];
+/* =========================
+   TRANSFORM HELPERS
+========================= */
+function applyTransformVars(el){
+  const rot   = parseFloat(el.dataset.rot || "0");
+  const scale = parseFloat(el.dataset.scale || "1");
+  const flipX = parseInt(el.dataset.flipX || "1", 10);
 
-/* ---------- Elements ---------- */
-const cardImg=document.getElementById('cardImg');
-const finalMessage=document.getElementById('finalMessage');
-const cardTitle=document.getElementById('cardTitle');
-const cardCategory=document.getElementById('cardCategory');
-const progressText=document.getElementById('progressText');
-const startControls=document.getElementById('startControls');
-const startBtn=document.getElementById('startBtn');
-const gameControls=document.getElementById('gameControls');
-const yesBtn=document.getElementById('yesBtn');
-const noBtn=document.getElementById('noBtn');
-const backBtn=document.getElementById('backBtn');
-const restartBtn=document.getElementById('restartBtn');
-const downloadBtn=document.getElementById('downloadBtn');
-const countPills=document.getElementById('countPills');
+  el.style.setProperty("--rot", rot + "deg");
+  el.style.setProperty("--sx", (flipX * scale).toString());
+  el.style.setProperty("--sy", scale.toString());
+}
+function angleDeg(dx, dy){ return Math.atan2(dy, dx) * 180 / Math.PI; }
+function normalizeDeg(deg){
+  let d = ((deg % 360) + 360) % 360;
+  if (d > 180) d -= 360;
+  return Math.round(d);
+}
 
-/* ---------- Render ---------- */
-function presentCard(){
-  if(idx>=deck.length){
-    cardImg.style.display="none";
-    finalMessage.style.display="flex";
-    progressText.textContent=`All done! 😊 You selected ${yesPicks.length} YES cards.`;
-    yesBtn.disabled=true; noBtn.disabled=true; backBtn.disabled=actionStack.length===0;
-    updateCounts(); updateDownloadState();
+/* =========================
+   PLACE
+   - Only “People” starts smaller
+   - Lower minScale so minis can get REALLY small
+========================= */
+function initialScaleForCategory(cat){
+  return (cat === "People") ? 0.6 : 1.0;
+}
+function place(m, x=null, y=null){
+  const rect = tray.getBoundingClientRect();
+  if (x === null) x = rect.width / 2;
+  if (y === null) y = rect.height / 2;
+
+  const wrap = document.createElement("div");
+  wrap.className = "placed";
+  wrap.style.left = x + "px";
+  wrap.style.top  = y + "px";
+  wrap.style.zIndex = (++zCounter);
+
+  wrap.dataset.rot = "0";
+  wrap.dataset.scale = String(initialScaleForCategory(m.category));
+  wrap.dataset.flipX = "1";
+  wrap.dataset.minScale = "0.02";   // allow very small
+  wrap.dataset.maxScale = "3";
+
+  const img = document.createElement("img");
+  img.src = m.url;
+  img.alt = m.name;
+
+  const rotateLine = document.createElement("div");
+  rotateLine.className = "rotateLine";
+
+  const rotateHandle = document.createElement("div");
+  rotateHandle.className = "handle rotateHandle";
+  rotateHandle.title = "Rotate";
+  rotateHandle.innerHTML = "<span>↻</span>";
+
+  const resizeHandle = document.createElement("div");
+  resizeHandle.className = "handle resizeHandle";
+  resizeHandle.title = "Resize";
+  resizeHandle.innerHTML = "<span>↔︎</span>";
+
+  const flipHandle = document.createElement("div");
+  flipHandle.className = "handle flipHandle";
+  flipHandle.title = "Flip";
+  flipHandle.innerHTML = "<span>⇋</span>";
+
+  wrap.appendChild(img);
+  wrap.appendChild(rotateLine);
+  wrap.appendChild(rotateHandle);
+  wrap.appendChild(resizeHandle);
+  wrap.appendChild(flipHandle);
+  tray.appendChild(wrap);
+
+  applyTransformVars(wrap);
+
+  wrap.addEventListener("click", (e) => { e.stopPropagation(); select(wrap); });
+  wrap.addEventListener("pointerdown", (e) => move(e, wrap));
+  rotateHandle.addEventListener("pointerdown", (e) => rotate(e, wrap));
+  resizeHandle.addEventListener("pointerdown", (e) => resize(e, wrap));
+  flipHandle.addEventListener("click", (e) => { e.stopPropagation(); flip(wrap); });
+
+  select(wrap);
+}
+
+/* Move */
+function move(e, el){
+  if (e.target.closest(".rotateHandle") || e.target.closest(".resizeHandle") || e.target.closest(".flipHandle")) return;
+  e.stopPropagation();
+  select(el);
+
+  const rect = tray.getBoundingClientRect();
+  const startLeft = parseFloat(el.style.left);
+  const startTop  = parseFloat(el.style.top);
+  const startX = e.clientX - rect.left;
+  const startY = e.clientY - rect.top;
+
+  function onmove(ev){
+    el.style.left = startLeft + (ev.clientX - rect.left - startX) + "px";
+    el.style.top  = startTop  + (ev.clientY - rect.top  - startY) + "px";
+  }
+  window.addEventListener("pointermove", onmove);
+  window.addEventListener("pointerup", () => window.removeEventListener("pointermove", onmove), { once:true });
+}
+
+/* Rotate */
+function rotate(e, el){
+  e.preventDefault();
+  e.stopPropagation();
+  select(el);
+
+  const trayRect = tray.getBoundingClientRect();
+  const cx = parseFloat(el.style.left);
+  const cy = parseFloat(el.style.top);
+
+  const startRot = parseFloat(el.dataset.rot || "0");
+  const startAngle = angleDeg(
+    (e.clientX - trayRect.left) - cx,
+    (e.clientY - trayRect.top)  - cy
+  );
+
+  function onmove(ev){
+    const currentAngle = angleDeg(
+      (ev.clientX - trayRect.left) - cx,
+      (ev.clientY - trayRect.top)  - cy
+    );
+    const delta = currentAngle - startAngle;
+    const newRot = normalizeDeg(startRot + delta);
+
+    el.dataset.rot = String(newRot);
+    applyTransformVars(el);
+  }
+  window.addEventListener("pointermove", onmove);
+  window.addEventListener("pointerup", () => window.removeEventListener("pointermove", onmove), { once:true });
+}
+
+/* Resize (no “reverse”; just scales with clamp) */
+function resize(e, el){
+  e.preventDefault();
+  e.stopPropagation();
+  select(el);
+
+  const startScale = parseFloat(el.dataset.scale || "1");
+  const minScale = parseFloat(el.dataset.minScale || "0.02");
+  const maxScale = parseFloat(el.dataset.maxScale || "3");
+
+  const startX = e.clientX;
+  const startY = e.clientY;
+
+  function onmove(ev){
+    const dx = ev.clientX - startX;
+    const dy = ev.clientY - startY;
+
+    // smoother: use diagonal drag; up/left shrinks, down/right grows
+    const delta = (dx + dy) / 320;
+    let newScale = startScale + delta;
+    newScale = Math.max(minScale, Math.min(maxScale, newScale));
+
+    el.dataset.scale = String(newScale);
+    applyTransformVars(el);
+  }
+  window.addEventListener("pointermove", onmove);
+  window.addEventListener("pointerup", () => window.removeEventListener("pointermove", onmove), { once:true });
+}
+
+/* Flip */
+function flip(el){
+  const current = parseInt(el.dataset.flipX || "1", 10);
+  el.dataset.flipX = String(current * -1);
+  applyTransformVars(el);
+}
+
+/* =========================
+   LIBRARY (lazy thumbs)
+========================= */
+let io = null;
+function ensureObserver(){
+  if (io) return;
+  io = new IntersectionObserver((entries) => {
+    for (const entry of entries){
+      if (!entry.isIntersecting) continue;
+      const img = entry.target;
+      const src = img.getAttribute("data-src");
+      if (src){
+        img.src = src;
+        img.removeAttribute("data-src");
+      }
+      io.unobserve(img);
+    }
+  }, { root: thumbGrid, rootMargin: "200px" });
+}
+
+function renderTabs(){
+  tabsEl.innerHTML = "";
+  for (const cat of CATEGORIES){
+    const b = document.createElement("button");
+    b.className = "tab" + (cat === activeCategory ? " active" : "");
+    b.textContent = cat;
+    b.onclick = () => { activeCategory = cat; renderTabs(); renderLibrary(); };
+    tabsEl.appendChild(b);
+  }
+}
+
+function renderLibrary(){
+  ensureObserver();
+  thumbGrid.innerHTML = "";
+
+  const list = MINIATURES.filter(m => m.category === activeCategory);
+
+  for (const m of list){
+    const div = document.createElement("div");
+    div.className = "thumb";
+    div.title = m.name;
+
+    const ph = document.createElement("div");
+    ph.className = "ph";
+    div.appendChild(ph);
+
+    const img = document.createElement("img");
+    img.alt = m.name;
+
+    img.setAttribute("data-src", m.url);
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.fetchPriority = "low";
+
+    img.onload = () => { if (ph.parentNode) ph.remove(); };
+    img.onerror = () => { if (ph.parentNode) ph.remove(); };
+
+    div.appendChild(img);
+    div.addEventListener("click", () => place(m));
+
+    thumbGrid.appendChild(div);
+    io.observe(img);
+  }
+}
+
+/* =========================
+   CONTROLS
+========================= */
+tray.addEventListener("click", () => deselect());
+frontBtn.onclick = () => { if (selected) selected.style.zIndex = (++zCounter); };
+backBtn.onclick  = () => { if (selected) selected.style.zIndex = 1; };
+deleteBtn.onclick= () => deleteSelected();
+clearBtn.onclick = () => { tray.innerHTML = ""; deselect(); };
+
+/* =========================
+   EXPORT
+========================= */
+exportBtn.onclick = () => {
+  if (typeof html2canvas !== "function"){
+    alert("Save is still loading. Try again in a moment.");
     return;
   }
-  const c=deck[idx];
-  if(c.isIntro && !started){
-    startControls.style.display="flex"; gameControls.style.display="none"; progressText.textContent="";
-  } else {
-    startControls.style.display="none"; gameControls.style.display="flex"; progressText.textContent=`${Math.min(idx+1,deck.length)} / ${deck.length}`;
-  }
-  finalMessage.style.display="none";
-  cardImg.style.display="block";
-  yesBtn.disabled=!!c.isIntro; noBtn.disabled=!!c.isIntro;
-  cardImg.src=c.image; cardTitle.textContent=c.title; cardCategory.textContent=c.category;
-  backBtn.disabled=actionStack.length===0;
-  updateCounts(); updateDownloadState();
-}
+  html2canvas(tray).then(canvas => {
+    const link = document.createElement("a");
+    link.download = "sand-tray.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
+};
 
-/* ---------- Start flip ---------- */
-function flipToFirstCard(){
-  const nextIndex=idx+1, next=deck[nextIndex]; if(!next){started=true;return;}
-  startBtn.disabled=true; startControls.style.display="none"; gameControls.style.display="none";
-  requestAnimationFrame(()=>{ cardImg.style.transform="scaleX(0)"; });
-  const onFirstHalf=()=>{
-    cardImg.removeEventListener('transitionend',onFirstHalf);
-    idx=nextIndex; started=true;
-    cardImg.src=next.image; cardTitle.textContent=next.title; cardCategory.textContent=next.category;
-    requestAnimationFrame(()=>{ cardImg.style.transform="scaleX(1)"; });
-    cardImg.addEventListener('transitionend',()=>{ gameControls.style.display="flex"; yesBtn.disabled=false; noBtn.disabled=false; progressText.textContent=`${Math.min(idx+1,deck.length)} / ${deck.length}`; backBtn.disabled=actionStack.length===0; updateCounts(); updateDownloadState(); },{once:true});
-  };
-  cardImg.addEventListener('transitionend',onFirstHalf,{once:true});
-}
+const h2c = document.createElement("script");
+h2c.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+document.body.appendChild(h2c);
 
-/* ---------- Actions ---------- */
-startBtn.addEventListener('click',()=>{ if(deck[idx].isIntro && !started){ actionStack.push({type:'INTRO'}); flipToFirstCard(); }});
-yesBtn.addEventListener('click',()=>{ if(idx>=deck.length)return; const c=deck[idx]; if(c.isIntro)return; const uid=uidSeq++; yesPicks.push({uid,title:c.title,category:c.category}); actionStack.push({type:'YES',uid,title:c.title,category:c.category}); idx++; presentCard(); });
-noBtn.addEventListener('click',()=>{ if(idx>=deck.length)return; const c=deck[idx]; if(c.isIntro)return; const uid=uidSeq++; actionStack.push({type:'NO',uid,title:c.title,category:c.category}); idx++; presentCard(); });
-backBtn.addEventListener('click',()=>{ if(idx===0||actionStack.length===0)return; idx=Math.max(0,idx-1); const last=actionStack.pop(); if(last.type==='YES'){const yIdx=yesPicks.findIndex(y=>y.uid===last.uid); if(yIdx!==-1)yesPicks.splice(yIdx,1);} else if(last.type==='INTRO'){started=false;} presentCard(); });
-restartBtn.addEventListener('click',()=>{ yesPicks.length=0; actionStack.length=0; idx=0; uidSeq=0; started=false; deck=buildOrderedDeck(); cardImg.style.transform="scaleX(1)"; startControls.style.display="flex"; gameControls.style.display="none"; startBtn.disabled=false; backBtn.disabled=true; presentCard(); });
-
-/* ---------- Counts & PDF ---------- */
-function updateCounts(){ const order=Object.keys(categories); const counts={}; order.forEach(cat=>counts[cat]=0); yesPicks.forEach(p=>counts[p.category]++); countPills.innerHTML=''; order.forEach((cat,i)=>{const pill=document.createElement('div'); pill.className='pill'; pill.textContent=`Group ${i+1}: ${counts[cat]} YES`; countPills.appendChild(pill);}); }
-function updateDownloadState(){ downloadBtn.disabled=yesPicks.length===0; }
-downloadBtn.addEventListener('click',()=>{ const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'pt',format:'letter'}); doc.setFontSize(18); doc.text('YES Endorsed Cards',40,48); const grouped={}; yesPicks.forEach(p=>{(grouped[p.category] ||= []).push(p.title);}); let y=80,line=16,pageBottom=740; Object.keys(categories).forEach(cat=>{ const list=grouped[cat]||[]; if(!list.length)return; if(y+30>pageBottom){doc.addPage();y=40;} doc.setFontSize(14); doc.text(cat,40,y); y+=line; doc.setFontSize(12); list.forEach(t=>{ if(y+16>pageBottom){doc.addPage();y=40;} doc.text(`- ${t}`,60,y); y+=line; }); y+=8; }); doc.save('endorsed_cards.pdf'); });
-
-/* ---------- Init ---------- */
-presentCard();
+/* =========================
+   INIT
+========================= */
+setButtons(false);
+renderTabs();
+renderLibrary();
 </script>
 </body>
 </html>
